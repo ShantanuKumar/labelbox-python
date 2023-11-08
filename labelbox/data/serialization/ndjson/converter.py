@@ -10,7 +10,6 @@ IGNORE_IF_NONE = ["page", "unit", "messageId"]
 
 
 class NDJsonConverter:
-
     @staticmethod
     def deserialize(json_data: Iterable[Dict[str, Any]]) -> LabelGenerator:
         """
@@ -21,18 +20,17 @@ class NDJsonConverter:
         Returns:
             LabelGenerator containing the ndjson data.
         """
-        data = NDLabel(**{'annotations': json_data})
+        data = NDLabel(**{"annotations": json_data})
         res = data.to_common()
         return res
 
     @staticmethod
-    def serialize(
-            labels: LabelCollection) -> Generator[Dict[str, Any], None, None]:
+    def serialize(labels: LabelCollection) -> Generator[Dict[str, Any], None, None]:
         """
         Converts a labelbox common object to the labelbox ndjson format (prediction import format)
 
         Note that this function might fail for objects that are not supported by mal.
-        Not all edge cases are handling by custom exceptions, if you get a cryptic pydantic error message it is probably due to this.
+        Not all edge cases are handling by custom exceptions, if you get a cryptic pydantic.v1 error message it is probably due to this.
         We will continue to improve the error messages and add helper functions to deal with this.
 
         Args:

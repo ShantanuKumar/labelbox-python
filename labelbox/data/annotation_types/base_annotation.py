@@ -1,14 +1,14 @@
 import abc
 from uuid import UUID, uuid4
 from typing import Any, Dict
-from pydantic import PrivateAttr
+from pydantic.v1 import PrivateAttr
 
 from .feature import FeatureSchema
 
 
 class BaseAnnotation(FeatureSchema, abc.ABC):
-    """ Base annotation class. Shouldn't be directly instantiated
-    """
+    """Base annotation class. Shouldn't be directly instantiated"""
+
     _uuid: UUID = PrivateAttr()
     extra: Dict[str, Any] = {}
 

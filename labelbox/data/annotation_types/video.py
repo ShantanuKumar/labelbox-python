@@ -1,10 +1,16 @@
 from enum import Enum
 from typing import List, Optional, Tuple
 
-from pydantic import BaseModel, validator
-from labelbox.data.annotation_types.annotation import ClassificationAnnotation, ObjectAnnotation
+from pydantic.v1 import BaseModel, validator
+from labelbox.data.annotation_types.annotation import (
+    ClassificationAnnotation,
+    ObjectAnnotation,
+)
 
-from labelbox.data.annotation_types.annotation import ClassificationAnnotation, ObjectAnnotation
+from labelbox.data.annotation_types.annotation import (
+    ClassificationAnnotation,
+    ObjectAnnotation,
+)
 from labelbox.data.annotation_types.feature import FeatureSchema
 from labelbox.data.mixins import ConfidenceNotSupportedMixin
 from labelbox.utils import _CamelCaseMixin, is_valid_uri
@@ -20,6 +26,7 @@ class VideoClassificationAnnotation(ClassificationAnnotation):
         segment_id (Optional[Int]): Index of video segment this annotation belongs to
         extra (Dict[str, Any])
     """
+
     frame: int
     segment_index: Optional[int] = None
 
@@ -45,14 +52,15 @@ class VideoObjectAnnotation(ObjectAnnotation, ConfidenceNotSupportedMixin):
         classifications (List[ClassificationAnnotation]) = []
         extra (Dict[str, Any])
     """
+
     frame: int
     keyframe: bool
     segment_index: Optional[int] = None
 
 
 class GroupKey(Enum):
-    """Group key for DICOM annotations
-    """
+    """Group key for DICOM annotations"""
+
     AXIAL = "axial"
     SAGITTAL = "sagittal"
     CORONAL = "coronal"
@@ -81,8 +89,9 @@ class DICOMObjectAnnotation(VideoObjectAnnotation):
         keyframe (bool): Whether or not this annotation was a human generated or interpolated annotation
         segment_id (Optional[Int]): Index of video segment this annotation belongs to
         classifications (List[ClassificationAnnotation]) = []
-        extra (Dict[str, Any])        
+        extra (Dict[str, Any])
     """
+
     group_key: GroupKey
 
 
@@ -104,36 +113,38 @@ class MaskInstance(_CamelCaseMixin, FeatureSchema):
 
 class VideoMaskAnnotation(BaseModel):
     """Video mask annotation
-       >>> VideoMaskAnnotation(
-       >>>     frames=[
-       >>>         MaskFrame(index=1, instance_uri='https://storage.labelbox.com/cjhfn5y6s0pk507024nz1ocys%2F1d60856c-59b7-3060-2754-83f7e93e0d01-1?Expires=1666901963361&KeyName=labelbox-assets-key-3&Signature=t-2s2DB4YjFuWEFak0wxYqfBfZA'),
-       >>>         MaskFrame(index=5, instance_uri='https://storage.labelbox.com/cjhfn5y6s0pk507024nz1ocys1%2F1d60856c-59b7-3060-2754-83f7e93e0d01-1?Expires=1666901963361&KeyName=labelbox-assets-key-3&Signature=t-2s2DB4YjFuWEFak0wxYqfBfZA'),
-       >>>     ],
-       >>>     instances=[
-       >>>         MaskInstance(color_rgb=(0, 0, 255), name="mask1"),
-       >>>         MaskInstance(color_rgb=(0, 255, 0), name="mask2"),
-       >>>         MaskInstance(color_rgb=(255, 0, 0), name="mask3")
-       >>>     ]
-       >>> )
+    >>> VideoMaskAnnotation(
+    >>>     frames=[
+    >>>         MaskFrame(index=1, instance_uri='https://storage.labelbox.com/cjhfn5y6s0pk507024nz1ocys%2F1d60856c-59b7-3060-2754-83f7e93e0d01-1?Expires=1666901963361&KeyName=labelbox-assets-key-3&Signature=t-2s2DB4YjFuWEFak0wxYqfBfZA'),
+    >>>         MaskFrame(index=5, instance_uri='https://storage.labelbox.com/cjhfn5y6s0pk507024nz1ocys1%2F1d60856c-59b7-3060-2754-83f7e93e0d01-1?Expires=1666901963361&KeyName=labelbox-assets-key-3&Signature=t-2s2DB4YjFuWEFak0wxYqfBfZA'),
+    >>>     ],
+    >>>     instances=[
+    >>>         MaskInstance(color_rgb=(0, 0, 255), name="mask1"),
+    >>>         MaskInstance(color_rgb=(0, 255, 0), name="mask2"),
+    >>>         MaskInstance(color_rgb=(255, 0, 0), name="mask3")
+    >>>     ]
+    >>> )
     """
+
     frames: List[MaskFrame]
     instances: List[MaskInstance]
 
 
 class DICOMMaskAnnotation(VideoMaskAnnotation):
     """DICOM mask annotation
-       >>> DICOMMaskAnnotation(
-       >>>     name="dicom_mask",
-       >>>     group_key=GroupKey.AXIAL,
-       >>>     frames=[
-       >>>         MaskFrame(index=1, instance_uri='https://storage.labelbox.com/cjhfn5y6s0pk507024nz1ocys%2F1d60856c-59b7-3060-2754-83f7e93e0d01-1?Expires=1666901963361&KeyName=labelbox-assets-key-3&Signature=t-2s2DB4YjFuWEFak0wxYqfBfZA'),
-       >>>         MaskFrame(index=5, instance_uri='https://storage.labelbox.com/cjhfn5y6s0pk507024nz1ocys1%2F1d60856c-59b7-3060-2754-83f7e93e0d01-1?Expires=1666901963361&KeyName=labelbox-assets-key-3&Signature=t-2s2DB4YjFuWEFak0wxYqfBfZA'),
-       >>>     ],
-       >>>     instances=[
-       >>>         MaskInstance(color_rgb=(0, 0, 255), name="mask1"),
-       >>>         MaskInstance(color_rgb=(0, 255, 0), name="mask2"),
-       >>>         MaskInstance(color_rgb=(255, 0, 0), name="mask3")
-       >>>     ]
-       >>> )
+    >>> DICOMMaskAnnotation(
+    >>>     name="dicom_mask",
+    >>>     group_key=GroupKey.AXIAL,
+    >>>     frames=[
+    >>>         MaskFrame(index=1, instance_uri='https://storage.labelbox.com/cjhfn5y6s0pk507024nz1ocys%2F1d60856c-59b7-3060-2754-83f7e93e0d01-1?Expires=1666901963361&KeyName=labelbox-assets-key-3&Signature=t-2s2DB4YjFuWEFak0wxYqfBfZA'),
+    >>>         MaskFrame(index=5, instance_uri='https://storage.labelbox.com/cjhfn5y6s0pk507024nz1ocys1%2F1d60856c-59b7-3060-2754-83f7e93e0d01-1?Expires=1666901963361&KeyName=labelbox-assets-key-3&Signature=t-2s2DB4YjFuWEFak0wxYqfBfZA'),
+    >>>     ],
+    >>>     instances=[
+    >>>         MaskInstance(color_rgb=(0, 0, 255), name="mask1"),
+    >>>         MaskInstance(color_rgb=(0, 255, 0), name="mask2"),
+    >>>         MaskInstance(color_rgb=(255, 0, 0), name="mask3")
+    >>>     ]
+    >>> )
     """
+
     group_key: GroupKey

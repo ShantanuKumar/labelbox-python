@@ -3,7 +3,7 @@ from typing import Callable, Optional
 import requests
 from requests.exceptions import ConnectTimeout
 from google.api_core import retry
-from pydantic import root_validator
+from pydantic.v1 import root_validator
 
 from labelbox.exceptions import InternalServerError
 from labelbox.typing_imports import Literal
@@ -22,6 +22,7 @@ class TextData(BaseData, _NoCoercionMixin):
         text (str)
         url (str)
     """
+
     class_name: Literal["TextData"] = "TextData"
     file_path: Optional[str] = None
     text: Optional[str] = None
@@ -50,11 +51,12 @@ class TextData(BaseData, _NoCoercionMixin):
             raise ValueError("Must set either url, file_path or im_bytes")
 
     def set_fetch_fn(self, fn):
-        object.__setattr__(self, 'fetch_remote', lambda: fn(self))
+        object.__setattr__(self, "fetch_remote", lambda: fn(self))
 
-    @retry.Retry(deadline=15.,
-                 predicate=retry.if_exception_type(ConnectTimeout,
-                                                   InternalServerError))
+    @retry.Retry(
+        deadline=15.0,
+        predicate=retry.if_exception_type(ConnectTimeout, InternalServerError),
+    )
     def fetch_remote(self) -> str:
         """
         Method for accessing url.
@@ -68,7 +70,7 @@ class TextData(BaseData, _NoCoercionMixin):
         response.raise_for_status()
         return response.text
 
-    @retry.Retry(deadline=15.)
+    @retry.Retry(deadline=15.0)
     def create_url(self, signer: Callable[[bytes], str]) -> None:
         """
         Utility for creating a url from any of the other text references.
@@ -81,13 +83,12 @@ class TextData(BaseData, _NoCoercionMixin):
         if self.url is not None:
             return self.url
         elif self.file_path is not None:
-            with open(self.file_path, 'rb') as file:
+            with open(self.file_path, "rb") as file:
                 self.url = signer(file.read())
         elif self.text is not None:
             self.url = signer(self.text.encode())
         else:
-            raise ValueError(
-                "One of url, im_bytes, file_path, numpy must not be None.")
+            raise ValueError("One of url, im_bytes, file_path, numpy must not be None.")
         return self.url
 
     @root_validator
@@ -95,8 +96,8 @@ class TextData(BaseData, _NoCoercionMixin):
         file_path = values.get("file_path")
         text = values.get("text")
         url = values.get("url")
-        uid = values.get('uid')
-        global_key = values.get('global_key')
+        uid = values.get("uid")
+        global_key = values.get("global_key")
         if uid == file_path == text == url == global_key == None:
             raise ValueError(
                 "One of `file_path`, `text`, `uid`, `global_key` or `url` required."
@@ -104,10 +105,12 @@ class TextData(BaseData, _NoCoercionMixin):
         return values
 
     def __repr__(self) -> str:
-        return  f"TextData(file_path={self.file_path}," \
-                f"text={self.text[:30] + '...' if self.text is not None else None}," \
-                f"url={self.url})"
+        return (
+            f"TextData(file_path={self.file_path},"
+            f"text={self.text[:30] + '...' if self.text is not None else None},"
+            f"url={self.url})"
+        )
 
     class config:
         # Required for discriminating between data types
-        extra = 'forbid'
+        extra = "forbid"

@@ -1,7 +1,7 @@
 from typing import Callable, Optional, Tuple, Union, Dict, List
 
 import numpy as np
-from pydantic.class_validators import validator
+from pydantic.v1.class_validators import validator
 import cv2
 
 from shapely.geometry import MultiPolygon, Polygon
@@ -39,21 +39,20 @@ class Mask(Geometry):
     @property
     def geometry(self) -> Dict[str, Tuple[int, int, int]]:
         mask = self.draw(color=1)
-        contours, hierarchy = cv2.findContours(image=mask,
-                                               mode=cv2.RETR_TREE,
-                                               method=cv2.CHAIN_APPROX_NONE)
+        contours, hierarchy = cv2.findContours(
+            image=mask, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_NONE
+        )
 
         holes = []
         external_contours = []
         for i in range(len(contours)):
             if hierarchy[0, i, 3] != -1:
-                #determined to be a hole based on contour hierarchy
+                # determined to be a hole based on contour hierarchy
                 holes.append(contours[i])
             else:
                 external_contours.append(contours[i])
 
-        external_polygons = self._extract_polygons_from_contours(
-            external_contours)
+        external_polygons = self._extract_polygons_from_contours(external_contours)
         holes = self._extract_polygons_from_contours(holes)
 
         if not external_polygons.is_valid:
@@ -64,12 +63,14 @@ class Mask(Geometry):
 
         return external_polygons.difference(holes).__geo_interface__
 
-    def draw(self,
-             height: Optional[int] = None,
-             width: Optional[int] = None,
-             canvas: Optional[np.ndarray] = None,
-             color: Optional[Union[int, Tuple[int, int, int]]] = None,
-             thickness=None) -> np.ndarray:
+    def draw(
+        self,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        canvas: Optional[np.ndarray] = None,
+        color: Optional[Union[int, Tuple[int, int, int]]] = None,
+        thickness=None,
+    ) -> np.ndarray:
         """Converts the Mask object into a numpy array
 
         Args:
@@ -90,16 +91,14 @@ class Mask(Geometry):
         mask = np.alltrue(mask == self.color, axis=2).astype(np.uint8)
 
         if height is not None or width is not None:
-            mask = cv2.resize(mask,
-                              (width or mask.shape[1], height or mask.shape[0]))
+            mask = cv2.resize(mask, (width or mask.shape[1], height or mask.shape[0]))
 
         dims = [mask.shape[0], mask.shape[1]]
         color = color or self.color
         if isinstance(color, (tuple, list)):
             dims = dims + [len(color)]
 
-        canvas = canvas if canvas is not None else np.zeros(tuple(dims),
-                                                            dtype=np.uint8)
+        canvas = canvas if canvas is not None else np.zeros(tuple(dims), dtype=np.uint8)
         canvas[mask.astype(bool)] = color
         return canvas
 
@@ -121,7 +120,7 @@ class Mask(Geometry):
         """
         return self.mask.create_url(signer)
 
-    @validator('color')
+    @validator("color")
     def is_valid_color(cls, color):
         if isinstance(color, (tuple, list)):
             if len(color) == 1:
@@ -136,6 +135,7 @@ class Mask(Geometry):
                 )
         elif not (0 <= color <= 255):
             raise ValueError(
-                f"All rgb colors must be between 0 and 255. Found : {color}")
+                f"All rgb colors must be between 0 and 255. Found : {color}"
+            )
 
         return color

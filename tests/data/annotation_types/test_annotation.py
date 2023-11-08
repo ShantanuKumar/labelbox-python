@@ -1,9 +1,14 @@
 import pytest
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
-from labelbox.data.annotation_types import (Text, Point, Line,
-                                            ClassificationAnnotation,
-                                            ObjectAnnotation, TextEntity)
+from labelbox.data.annotation_types import (
+    Text,
+    Point,
+    Line,
+    ClassificationAnnotation,
+    ObjectAnnotation,
+    TextEntity,
+)
 from labelbox.data.annotation_types.video import VideoObjectAnnotation
 from labelbox.data.annotation_types.geometry.rectangle import Rectangle
 from labelbox.data.annotation_types.video import VideoClassificationAnnotation
@@ -19,7 +24,7 @@ def test_annotation():
         value=line,
         name=name,
     )
-    assert annotation.value.points[0].dict() == {'extra': {}, 'x': 1., 'y': 2.}
+    assert annotation.value.points[0].dict() == {"extra": {}, "x": 1.0, "y": 2.0}
     assert annotation.name == name
 
     # Check ner
@@ -68,25 +73,25 @@ def test_video_annotations():
 
 def test_confidence_for_video_is_not_supported():
     with pytest.raises(ConfidenceNotSupportedException):
-        VideoObjectAnnotation(name='bbox toy',
-                              feature_schema_id='ckz38ofop0mci0z9i9w3aa9o4',
-                              extra={
-                                  'value': 'bbox_toy',
-                                  'instanceURI': None,
-                                  'color': '#1CE6FF',
-                                  'feature_id': 'cl1z52xw700000fhcayaqy0ev'
-                              },
-                              value=Rectangle(extra={},
-                                              start=Point(extra={},
-                                                          x=70.0,
-                                                          y=26.5),
-                                              end=Point(extra={},
-                                                        x=561.0,
-                                                        y=348.0)),
-                              classifications=[],
-                              frame=24,
-                              keyframe=False,
-                              confidence=0.3434),
+        VideoObjectAnnotation(
+            name="bbox toy",
+            feature_schema_id="ckz38ofop0mci0z9i9w3aa9o4",
+            extra={
+                "value": "bbox_toy",
+                "instanceURI": None,
+                "color": "#1CE6FF",
+                "feature_id": "cl1z52xw700000fhcayaqy0ev",
+            },
+            value=Rectangle(
+                extra={},
+                start=Point(extra={}, x=70.0, y=26.5),
+                end=Point(extra={}, x=561.0, y=348.0),
+            ),
+            classifications=[],
+            frame=24,
+            keyframe=False,
+            confidence=0.3434,
+        ),
 
 
 def test_confidence_value_range_validation():
@@ -95,4 +100,4 @@ def test_confidence_value_range_validation():
 
     with pytest.raises(ValueError) as e:
         ObjectAnnotation(value=line, name=name, confidence=14)
-    assert e.value.errors()[0]['msg'] == 'must be a number within [0,1] range'
+    assert e.value.errors()[0]["msg"] == "must be a number within [0,1] range"

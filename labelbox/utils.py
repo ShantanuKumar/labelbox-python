@@ -6,10 +6,10 @@ from dateutil.parser import isoparse as dateutil_parse
 from dateutil.utils import default_tzinfo
 
 from urllib.parse import urlparse
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
-UPPERCASE_COMPONENTS = ['uri', 'rgb']
-ISO_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+UPPERCASE_COMPONENTS = ["uri", "rgb"]
+ISO_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DFLT_TZ = tzoffset("UTC", 0000)
 
 
@@ -25,17 +25,17 @@ def _convert(s, sep, title):
 
 
 def camel_case(s):
-    """ Converts a string in [snake|camel|title]case to camelCase. """
+    """Converts a string in [snake|camel|title]case to camelCase."""
     return _convert(s, "", lambda i: i > 0)
 
 
 def title_case(s):
-    """ Converts a string in [snake|camel|title]case to TitleCase. """
+    """Converts a string in [snake|camel|title]case to TitleCase."""
     return _convert(s, "", lambda i: True)
 
 
 def snake_case(s):
-    """ Converts a string in [snake|camel|title]case to snake_case. """
+    """Converts a string in [snake|camel|title]case to snake_case."""
     return _convert(s, "_", lambda i: False)
 
 
@@ -52,7 +52,6 @@ def is_valid_uri(uri):
 
 
 class _CamelCaseMixin(BaseModel):
-
     class Config:
         allow_population_by_field_name = True
         alias_generator = camel_case
@@ -60,12 +59,12 @@ class _CamelCaseMixin(BaseModel):
 
 class _NoCoercionMixin:
     """
-    When using Unions in type annotations, pydantic will try to coerce the type
+    When using Unions in type annotations, pydantic.v1 will try to coerce the type
     of the object to the type of the first Union member. Which results in
     uninteded behavior.
 
-    This mixin uses a class_name discriminator field to prevent pydantic from
-    corecing the type of the object. Add a class_name field to the class you 
+    This mixin uses a class_name discriminator field to prevent pydantic.v1 from
+    corecing the type of the object. Add a class_name field to the class you
     want to discrimniate and use this mixin class to remove the discriminator
     when serializing the object.
 
@@ -77,7 +76,7 @@ class _NoCoercionMixin:
 
     def dict(self, *args, **kwargs):
         res = super().dict(*args, **kwargs)
-        res.pop('class_name')
+        res.pop("class_name")
         return res
 
 
