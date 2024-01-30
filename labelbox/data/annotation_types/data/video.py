@@ -8,7 +8,7 @@ from uuid import uuid4
 import cv2
 import numpy as np
 from google.api_core import retry
-from pydantic import root_validator
+from pydantic.v1 import root_validator
 
 from .base_data import BaseData
 from ..types import TypedArray
@@ -20,9 +20,10 @@ class VideoData(BaseData):
     """
     Represents video
     """
+
     file_path: Optional[str] = None
     url: Optional[str] = None
-    frames: Optional[Dict[int, TypedArray[Literal['uint8']]]] = None
+    frames: Optional[Dict[int, TypedArray[Literal["uint8"]]]] = None
 
     def load_frames(self, overwrite: bool = False) -> None:
         """
@@ -47,7 +48,7 @@ class VideoData(BaseData):
     def frame_generator(
             self,
             cache_frames=False,
-            download_dir='/tmp'
+            download_dir="/tmp"
     ) -> Generator[Tuple[int, np.ndarray], None, None]:
         """
         A generator for accessing individual frames in a video.
@@ -88,9 +89,9 @@ class VideoData(BaseData):
         return self.frames[idx]
 
     def set_fetch_fn(self, fn):
-        object.__setattr__(self, 'fetch_remote', lambda: fn(self))
+        object.__setattr__(self, "fetch_remote", lambda: fn(self))
 
-    @retry.Retry(deadline=15.)
+    @retry.Retry(deadline=15.0)
     def fetch_remote(self, local_path) -> None:
         """
         Method for downloading data from self.url
@@ -103,7 +104,7 @@ class VideoData(BaseData):
         """
         urllib.request.urlretrieve(self.url, local_path)
 
-    @retry.Retry(deadline=15.)
+    @retry.Retry(deadline=15.0)
     def create_url(self, signer: Callable[[bytes], str]) -> None:
         """
         Utility for creating a url from any of the other video references.
@@ -116,7 +117,7 @@ class VideoData(BaseData):
         if self.url is not None:
             return self.url
         elif self.file_path is not None:
-            with open(self.file_path, 'rb') as file:
+            with open(self.file_path, "rb") as file:
                 self.url = signer(file.read())
         elif self.frames is not None:
             self.file_path = self.frames_to_video(self.frames)
@@ -128,7 +129,7 @@ class VideoData(BaseData):
     def frames_to_video(self,
                         frames: Dict[int, np.ndarray],
                         fps=20,
-                        save_dir='/tmp') -> str:
+                        save_dir="/tmp") -> str:
         """
         Compresses the data by converting a set of individual frames to a single video.
 
@@ -139,7 +140,7 @@ class VideoData(BaseData):
             frame = frames[key]
             if out is None:
                 out = cv2.VideoWriter(file_path,
-                                      cv2.VideoWriter_fourcc(*'MP4V'), fps,
+                                      cv2.VideoWriter_fourcc(*"MP4V"), fps,
                                       frame.shape[:2])
             out.write(frame)
         if out is None:
@@ -162,10 +163,10 @@ class VideoData(BaseData):
         return values
 
     def __repr__(self) -> str:
-        return  f"VideoData(file_path={self.file_path}," \
-                f"frames={'...' if self.frames is not None else None}," \
-                f"url={self.url})"
+        return (f"VideoData(file_path={self.file_path},"
+                f"frames={'...' if self.frames is not None else None},"
+                f"url={self.url})")
 
     class Config:
         # Required for discriminating between data types
-        extra = 'forbid'
+        extra = "forbid"

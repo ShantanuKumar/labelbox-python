@@ -3,21 +3,27 @@ from abc import ABC, abstractmethod
 
 import geojson
 import numpy as np
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from shapely import geometry as geom
 
 
 class Geometry(BaseModel, ABC):
-    """Abstract base class for geometry objects
-    """
+    """Abstract base class for geometry objects"""
+
     extra: Dict[str, Any] = {}
 
     @property
     def shapely(
-        self
-    ) -> Union[geom.Point, geom.LineString, geom.Polygon, geom.MultiPoint,
-               geom.MultiLineString, geom.MultiPolygon]:
+        self,
+    ) -> Union[
+            geom.Point,
+            geom.LineString,
+            geom.Polygon,
+            geom.MultiPoint,
+            geom.MultiLineString,
+            geom.MultiPolygon,
+    ]:
         return geom.shape(self.geometry)
 
     def get_or_create_canvas(self, height: Optional[int], width: Optional[int],
@@ -36,10 +42,12 @@ class Geometry(BaseModel, ABC):
         pass
 
     @abstractmethod
-    def draw(self,
-             height: Optional[int] = None,
-             width: Optional[int] = None,
-             canvas: Optional[np.ndarray] = None,
-             color: Optional[Union[int, Tuple[int, int, int]]] = None,
-             thickness: Optional[int] = 1) -> np.ndarray:
+    def draw(
+        self,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        canvas: Optional[np.ndarray] = None,
+        color: Optional[Union[int, Tuple[int, int, int]]] = None,
+        thickness: Optional[int] = 1,
+    ) -> np.ndarray:
         pass

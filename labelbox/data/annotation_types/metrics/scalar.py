@@ -1,7 +1,7 @@
 from typing import Dict, Optional, Union
 from enum import Enum
 
-from pydantic import confloat, validator
+from pydantic.v1 import confloat, validator
 
 from .base import ConfidenceValue, BaseMetric
 
@@ -16,24 +16,32 @@ class ScalarMetricAggregation(Enum):
     SUM = "SUM"
 
 
-RESERVED_METRIC_NAMES = ('true_positive_count', 'false_positive_count',
-                         'true_negative_count', 'false_negative_count',
-                         'precision', 'recall', 'f1', 'iou')
+RESERVED_METRIC_NAMES = (
+    "true_positive_count",
+    "false_positive_count",
+    "true_negative_count",
+    "false_negative_count",
+    "precision",
+    "recall",
+    "f1",
+    "iou",
+)
 
 
 class ScalarMetric(BaseMetric):
-    """ Class representing scalar metrics
+    """Class representing scalar metrics
 
     For backwards compatibility, metric_name is optional.
     The metric_name will be set to a default name in the editor if it is not set.
     This is not recommended and support for empty metric_name fields will be removed.
     aggregation will be ignored wihtout providing a metric name.
     """
+
     metric_name: Optional[str] = None
     value: Union[ScalarMetricValue, ScalarMetricConfidenceValue]
     aggregation: ScalarMetricAggregation = ScalarMetricAggregation.ARITHMETIC_MEAN
 
-    @validator('metric_name')
+    @validator("metric_name")
     def validate_metric_name(cls, name: Union[str, None]):
         if name is None:
             return None
@@ -45,6 +53,6 @@ class ScalarMetric(BaseMetric):
 
     def dict(self, *args, **kwargs):
         res = super().dict(*args, **kwargs)
-        if res.get('metric_name') is None:
-            res.pop('aggregation')
+        if res.get("metric_name") is None:
+            res.pop("aggregation")
         return res

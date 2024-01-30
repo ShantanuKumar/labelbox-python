@@ -12,8 +12,8 @@ from google.api_core import retry
 from PIL import Image
 from pyproj import Transformer
 from pygeotile.point import Point as PygeoPoint
-from pydantic import BaseModel, validator
-from pydantic.class_validators import root_validator
+from pydantic.v1 import BaseModel, validator
+from pydantic.v1.class_validators import root_validator
 
 from labelbox.data.annotation_types import Rectangle, Point, Line, Polygon
 from .base_data import BaseData
@@ -30,19 +30,20 @@ VectorTool = Union[Point, Line, Rectangle, Polygon]
 
 
 class EPSG(Enum):
-    """ Provides the EPSG for tiled image assets that are currently supported.
-    
+    """Provides the EPSG for tiled image assets that are currently supported.
+
     SIMPLEPIXEL is Simple that can be used to obtain the pixel space coordinates
 
     >>> epsg = EPSG()
     """
+
     SIMPLEPIXEL = 1
     EPSG4326 = 4326
     EPSG3857 = 3857
 
 
 class TiledBounds(BaseModel):
-    """ Bounds for a tiled image asset related to the relevant epsg.
+    """Bounds for a tiled image asset related to the relevant epsg.
 
     Bounds should be Point objects.
 
@@ -52,25 +53,25 @@ class TiledBounds(BaseModel):
                 Point(x=-99.20534818927473, y=19.400498983095076)
             ])
     """
+
     epsg: EPSG
     bounds: List[Point]
 
-    @validator('bounds')
+    @validator("bounds")
     def validate_bounds_not_equal(cls, bounds):
         first_bound = bounds[0]
         second_bound = bounds[1]
 
-        if first_bound.x == second_bound.x or \
-            first_bound.y == second_bound.y:
+        if first_bound.x == second_bound.x or first_bound.y == second_bound.y:
             raise ValueError(
                 f"Bounds on either axes cannot be equal, currently {bounds}")
         return bounds
 
-    #validate bounds are within lat,lng range if they are EPSG4326
+    # validate bounds are within lat,lng range if they are EPSG4326
     @root_validator
     def validate_bounds_lat_lng(cls, values):
-        epsg = values.get('epsg')
-        bounds = values.get('bounds')
+        epsg = values.get("epsg")
+        bounds = values.get("bounds")
 
         if epsg == EPSG.EPSG4326:
             for bound in bounds:
@@ -84,7 +85,7 @@ class TiledBounds(BaseModel):
 
 
 class TileLayer(BaseModel):
-    """ Url that contains the tile layer. Must be in the format:
+    """Url that contains the tile layer. Must be in the format:
 
     https://c.tile.openstreetmap.org/{z}/{x}/{y}.png
 
@@ -93,13 +94,14 @@ class TileLayer(BaseModel):
         name="slippy map tile"
         )
     """
+
     url: str
     name: Optional[str] = "default"
 
     def asdict(self) -> Dict[str, str]:
         return {"tileLayerUrl": self.url, "name": self.name}
 
-    @validator('url')
+    @validator("url")
     def validate_url(cls, url):
         xyz_format = "/{z}/{x}/{y}"
         if xyz_format not in url:
@@ -108,7 +110,7 @@ class TileLayer(BaseModel):
 
 
 class TiledImageData(BaseData):
-    """ Represents tiled imagery 
+    """Represents tiled imagery
 
     If specified version is 2, converts bounds from [lng,lat] to [lat,lng]
 
@@ -120,12 +122,13 @@ class TiledImageData(BaseData):
         max_native_zoom: int = None
         tile_size: Optional[int]
         version: int = 2
-        alternative_layers: List[TileLayer]     
+        alternative_layers: List[TileLayer]
 
     >>> tiled_image_data = TiledImageData(tile_layer=TileLayer,
                                   tile_bounds=TiledBounds,
                                   zoom_levels=[1, 12])
     """
+
     tile_layer: TileLayer
     tile_bounds: TiledBounds
     alternative_layers: List[TileLayer] = []
@@ -142,9 +145,10 @@ class TiledImageData(BaseData):
     def asdict(self) -> Dict[str, str]:
         return {
             "tileLayerUrl": self.tile_layer.url,
-            "bounds": [[
-                self.tile_bounds.bounds[0].x, self.tile_bounds.bounds[0].y
-            ], [self.tile_bounds.bounds[1].x, self.tile_bounds.bounds[1].y]],
+            "bounds": [
+                [self.tile_bounds.bounds[0].x, self.tile_bounds.bounds[0].y],
+                [self.tile_bounds.bounds[1].x, self.tile_bounds.bounds[1].y],
+            ],
             "minZoom": self.zoom_levels[0],
             "maxZoom": self.zoom_levels[1],
             "maxNativeZoom": self.max_native_zoom,
@@ -153,7 +157,7 @@ class TiledImageData(BaseData):
             "alternativeLayers": [
                 layer.asdict() for layer in self.alternative_layers
             ],
-            "version": self.version
+            "version": self.version,
         }
 
     def raster_data(self,
@@ -171,12 +175,12 @@ class TiledImageData(BaseData):
             xstart, ystart, xend, yend = self._get_3857_image_params(
                 zoom, self.tile_bounds)
         elif self.tile_bounds.epsg == EPSG.EPSG3857:
-            #transform to 4326
+            # transform to 4326
             transformer = EPSGTransformer.create_geo_to_geo_transformer(
                 EPSG.EPSG3857, EPSG.EPSG4326)
             transforming_bounds = [
                 transformer(self.tile_bounds.bounds[0]),
-                transformer(self.tile_bounds.bounds[1])
+                transformer(self.tile_bounds.bounds[1]),
             ]
             xstart, ystart, xend, yend = self._get_3857_image_params(
                 zoom, transforming_bounds)
@@ -196,8 +200,7 @@ class TiledImageData(BaseData):
 
     @property
     def value(self) -> np.ndarray:
-        """Returns the value of a generated RasterData object.
-        """
+        """Returns the value of a generated RasterData object."""
         return self.raster_data(self.zoom_levels[0],
                                 multithread=self.multithread).value
 
@@ -253,22 +256,23 @@ class TiledImageData(BaseData):
         return x, y
 
     def _tile_to_pixel(self, tile: float) -> Tuple[int, int]:
-        """Rounds a tile coordinate and reports the remainder in pixels
-        """
+        """Rounds a tile coordinate and reports the remainder in pixels"""
         rounded_tile = int(tile)
         remainder = tile - rounded_tile
         pixel_offset = int(self.tile_size * remainder)
         return rounded_tile, pixel_offset
 
-    def _fetch_image_for_bounds(self,
-                                x_tile_start: int,
-                                y_tile_start: int,
-                                x_tile_end: int,
-                                y_tile_end: int,
-                                zoom: int,
-                                multithread=True) -> np.ndarray:
-        """Fetches the tiles and combines them into a single image. 
-        
+    def _fetch_image_for_bounds(
+        self,
+        x_tile_start: int,
+        y_tile_start: int,
+        x_tile_end: int,
+        y_tile_end: int,
+        zoom: int,
+        multithread=True,
+    ) -> np.ndarray:
+        """Fetches the tiles and combines them into a single image.
+
         If a tile cannot be fetched, a padding of expected tile size is instead added.
         """
 
@@ -344,7 +348,7 @@ class TiledImageData(BaseData):
                              f"Max allowed tiles are {max_tiles}"
                              f"Increase max tiles or reduce zoom level.")
 
-    @validator('zoom_levels')
+    @validator("zoom_levels")
     def validate_zoom_levels(cls, zoom_levels):
         if zoom_levels[0] > zoom_levels[1]:
             raise ValueError(
@@ -370,7 +374,7 @@ class EPSGTransformer(BaseModel):
     @staticmethod
     def _get_ranges(bounds: np.ndarray) -> Tuple[int, int]:
         """helper function to get the range between bounds.
-        
+
         returns a tuple (x_range, y_range)"""
         x_range = np.max(bounds[:, 0]) - np.min(bounds[:, 0])
         y_range = np.max(bounds[:, 1]) - np.min(bounds[:, 1])
@@ -378,10 +382,13 @@ class EPSGTransformer(BaseModel):
 
     @staticmethod
     def _min_max_x_y(bounds: np.ndarray) -> Tuple[int, int, int, int]:
-        """returns the min x, max x, min y, max y of a numpy array
-        """
-        return np.min(bounds[:, 0]), np.max(bounds[:, 0]), np.min(
-            bounds[:, 1]), np.max(bounds[:, 1])
+        """returns the min x, max x, min y, max y of a numpy array"""
+        return (
+            np.min(bounds[:, 0]),
+            np.max(bounds[:, 0]),
+            np.min(bounds[:, 1]),
+            np.max(bounds[:, 1]),
+        )
 
     @classmethod
     def geo_and_pixel(cls,
@@ -397,29 +404,31 @@ class EPSGTransformer(BaseModel):
 
         local_bounds = np.array([(point.x, point.y) for point in pixel_bounds],
                                 dtype=int)
-        #convert geo bounds to pixel bounds. assumes geo bounds are in wgs84/EPS4326 per leaflet
+        # convert geo bounds to pixel bounds. assumes geo bounds are in wgs84/EPS4326 per leaflet
         global_bounds = np.array([
             PygeoPoint.from_latitude_longitude(latitude=point.y,
                                                longitude=point.x).pixels(zoom)
             for point in geo_bounds
         ])
 
-        #get the range of pixels for both sets of bounds to use as a multiplification factor
+        # get the range of pixels for both sets of bounds to use as a multiplification factor
         local_x_range, local_y_range = cls._get_ranges(bounds=local_bounds)
         global_x_range, global_y_range = cls._get_ranges(bounds=global_bounds)
 
         if src_epsg == EPSG.SIMPLEPIXEL:
 
             def transform(x: int, y: int) -> Callable[[int, int], Transformer]:
-                scaled_xy = (x * (global_x_range) / (local_x_range),
-                             y * (global_y_range) / (local_y_range))
+                scaled_xy = (
+                    x * (global_x_range) / (local_x_range),
+                    y * (global_y_range) / (local_y_range),
+                )
 
                 minx, _, miny, _ = cls._min_max_x_y(bounds=global_bounds)
                 x, y = map(lambda i, j: i + j, scaled_xy, (minx, miny))
 
                 point = PygeoPoint.from_pixel(pixel_x=x, pixel_y=y,
                                               zoom=zoom).latitude_longitude
-                #convert to the desired epsg
+                # convert to the desired epsg
                 return Transformer.from_crs(EPSG.EPSG4326.value,
                                             geo_bounds_epsg.value,
                                             always_xy=True).transform(
@@ -427,7 +436,7 @@ class EPSGTransformer(BaseModel):
 
             return transform
 
-        #handles 4326 from lat,lng
+        # handles 4326 from lat,lng
         elif src_epsg == EPSG.EPSG4326:
 
             def transform(x: int, y: int) -> Callable[[int, int], Transformer]:
@@ -437,12 +446,14 @@ class EPSGTransformer(BaseModel):
                 minx, _, miny, _ = cls._min_max_x_y(global_bounds)
                 x, y = map(lambda i, j: i - j, point_in_px, (minx, miny))
 
-                return (x * (local_x_range) / (global_x_range),
-                        y * (local_y_range) / (global_y_range))
+                return (
+                    x * (local_x_range) / (global_x_range),
+                    y * (local_y_range) / (global_y_range),
+                )
 
             return transform
 
-        #handles 3857 from meters
+        # handles 3857 from meters
         elif src_epsg == EPSG.EPSG3857:
 
             def transform(x: int, y: int) -> Callable[[int, int], Transformer]:
@@ -452,8 +463,10 @@ class EPSGTransformer(BaseModel):
                 minx, _, miny, _ = cls._min_max_x_y(global_bounds)
                 x, y = map(lambda i, j: i - j, point_in_px, (minx, miny))
 
-                return (x * (local_x_range) / (global_x_range),
-                        y * (local_y_range) / (global_y_range))
+                return (
+                    x * (local_x_range) / (global_x_range),
+                    y * (local_y_range) / (global_y_range),
+                )
 
             return transform
 
@@ -461,7 +474,7 @@ class EPSGTransformer(BaseModel):
     def create_geo_to_geo_transformer(
             cls, src_epsg: EPSG,
             tgt_epsg: EPSG) -> Callable[[int, int], Transformer]:
-        """method to change from one projection to another projection. 
+        """method to change from one projection to another projection.
 
         supports EPSG transformations not Simple.
         """
@@ -482,10 +495,12 @@ class EPSGTransformer(BaseModel):
             zoom=0) -> Callable[[int, int], Transformer]:
         """method to change from a geo projection to Simple"""
 
-        transform_function = cls.geo_and_pixel(src_epsg=src_epsg,
-                                               pixel_bounds=pixel_bounds,
-                                               geo_bounds=geo_bounds,
-                                               zoom=zoom)
+        transform_function = cls.geo_and_pixel(
+            src_epsg=src_epsg,
+            pixel_bounds=pixel_bounds,
+            geo_bounds=geo_bounds,
+            zoom=zoom,
+        )
         return EPSGTransformer(transformer=transform_function)
 
     @classmethod
@@ -496,10 +511,12 @@ class EPSGTransformer(BaseModel):
             geo_bounds: TiledBounds,
             zoom=0) -> Callable[[int, int], Transformer]:
         """method to change from a geo projection to Simple"""
-        transform_function = cls.geo_and_pixel(src_epsg=src_epsg,
-                                               pixel_bounds=pixel_bounds,
-                                               geo_bounds=geo_bounds,
-                                               zoom=zoom)
+        transform_function = cls.geo_and_pixel(
+            src_epsg=src_epsg,
+            pixel_bounds=pixel_bounds,
+            geo_bounds=geo_bounds,
+            zoom=zoom,
+        )
         return EPSGTransformer(transformer=transform_function)
 
     def _get_point_obj(self, point) -> Point:
@@ -519,7 +536,9 @@ class EPSGTransformer(BaseModel):
             return Polygon(
                 points=[self._get_point_obj(p) for p in shape.points])
         if isinstance(shape, Rectangle):
-            return Rectangle(start=self._get_point_obj(shape.start),
-                             end=self._get_point_obj(shape.end))
+            return Rectangle(
+                start=self._get_point_obj(shape.start),
+                end=self._get_point_obj(shape.end),
+            )
         else:
             raise ValueError(f"Unsupported type found: {type(shape)}")

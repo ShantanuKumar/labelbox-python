@@ -4,11 +4,14 @@ from typing import Dict, Generator, List, Tuple, Union
 from collections import defaultdict
 import warnings
 
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from ...annotation_types.annotation import ClassificationAnnotation, ObjectAnnotation
 from ...annotation_types.relationship import RelationshipAnnotation
-from ...annotation_types.video import DICOMObjectAnnotation, VideoClassificationAnnotation
+from ...annotation_types.video import (
+    DICOMObjectAnnotation,
+    VideoClassificationAnnotation,
+)
 from ...annotation_types.video import VideoObjectAnnotation, VideoMaskAnnotation
 from ...annotation_types.collection import LabelCollection, LabelGenerator
 from ...annotation_types.data import DicomData, ImageData, TextData, VideoData
@@ -18,14 +21,34 @@ from ...annotation_types.classification import Dropdown
 from ...annotation_types.metrics import ScalarMetric, ConfusionMatrixMetric
 
 from .metric import NDScalarMetric, NDMetricAnnotation, NDConfusionMatrixMetric
-from .classification import NDChecklistSubclass, NDClassification, NDClassificationType, NDRadioSubclass
-from .objects import NDObject, NDObjectType, NDSegments, NDDicomSegments, NDVideoMasks, NDDicomMasks
+from .classification import (
+    NDChecklistSubclass,
+    NDClassification,
+    NDClassificationType,
+    NDRadioSubclass,
+)
+from .objects import (
+    NDObject,
+    NDObjectType,
+    NDSegments,
+    NDDicomSegments,
+    NDVideoMasks,
+    NDDicomMasks,
+)
 from .relationship import NDRelationship
 from .base import DataRow
 
-AnnotationType = Union[NDObjectType, NDClassificationType,
-                       NDConfusionMatrixMetric, NDScalarMetric, NDDicomSegments,
-                       NDSegments, NDDicomMasks, NDVideoMasks, NDRelationship]
+AnnotationType = Union[
+    NDObjectType,
+    NDClassificationType,
+    NDConfusionMatrixMetric,
+    NDScalarMetric,
+    NDDicomSegments,
+    NDSegments,
+    NDDicomMasks,
+    NDVideoMasks,
+    NDRelationship,
+]
 
 
 class NDLabel(BaseModel):
@@ -33,12 +56,14 @@ class NDLabel(BaseModel):
 
     class _Relationship(BaseModel):
         """This object holds information about the relationship"""
+
         ndjson: NDRelationship
         source: str
         target: str
 
     class _AnnotationGroup(BaseModel):
         """Stores all the annotations and relationships per datarow"""
+
         data_row: DataRow = None
         ndjson_annotations: Dict[str, AnnotationType] = {}
         relationships: List["NDLabel._Relationship"] = []
@@ -55,7 +80,8 @@ class NDLabel(BaseModel):
                     NDLabel._Relationship(
                         ndjson=ndjson_annotation,
                         source=ndjson_annotation.relationship.source,
-                        target=ndjson_annotation.relationship.target))
+                        target=ndjson_annotation.relationship.target,
+                    ))
             else:
                 # if this is the first object in this group, we
                 # take note of the DataRow this group belongs to
@@ -67,7 +93,8 @@ class NDLabel(BaseModel):
                 # we need to change the value type of
                 # `_AnnotationGroupTuple.ndjson_objects` to accept a list of objects
                 # and adapt the code to support duplicate UUIDs
-                assert ndjson_annotation.uuid not in group.ndjson_annotations, f"UUID '{ndjson_annotation.uuid}' is not unique"
+                assert (ndjson_annotation.uuid not in group.ndjson_annotations
+                       ), f"UUID '{ndjson_annotation.uuid}' is not unique"
 
                 group.ndjson_annotations[
                     ndjson_annotation.uuid] = ndjson_annotation
@@ -94,14 +121,18 @@ class NDLabel(BaseModel):
             for uuid, ndjson_annotation in group.ndjson_annotations.items():
                 if isinstance(ndjson_annotation, NDDicomSegments):
                     annotations.extend(
-                        NDDicomSegments.to_common(ndjson_annotation,
-                                                  ndjson_annotation.name,
-                                                  ndjson_annotation.schema_id))
+                        NDDicomSegments.to_common(
+                            ndjson_annotation,
+                            ndjson_annotation.name,
+                            ndjson_annotation.schema_id,
+                        ))
                 elif isinstance(ndjson_annotation, NDSegments):
                     annotations.extend(
-                        NDSegments.to_common(ndjson_annotation,
-                                             ndjson_annotation.name,
-                                             ndjson_annotation.schema_id))
+                        NDSegments.to_common(
+                            ndjson_annotation,
+                            ndjson_annotation.name,
+                            ndjson_annotation.schema_id,
+                        ))
                 elif isinstance(ndjson_annotation, NDDicomMasks):
                     annotations.append(
                         NDDicomMasks.to_common(ndjson_annotation))
@@ -129,9 +160,10 @@ class NDLabel(BaseModel):
             # involved
             for relationship in group.relationships:
                 try:
-                    source, target = relationship_annotations[
-                        relationship.source], relationship_annotations[
-                            relationship.target]
+                    source, target = (
+                        relationship_annotations[relationship.source],
+                        relationship_annotations[relationship.target],
+                    )
                 except KeyError:
                     raise ValueError(
                         f"Relationship object refers to nonexistent object with UUID '{relationship.source}' and/or '{relationship.target}'"
@@ -140,17 +172,25 @@ class NDLabel(BaseModel):
                     NDRelationship.to_common(relationship.ndjson, source,
                                              target))
 
-            yield Label(annotations=annotations,
-                        data=self._infer_media_type(group.data_row,
-                                                    annotations))
+            yield Label(
+                annotations=annotations,
+                data=self._infer_media_type(group.data_row, annotations),
+            )
 
     def _infer_media_type(
-        self, data_row: DataRow,
-        annotations: List[Union[TextEntity, ConversationEntity,
-                                VideoClassificationAnnotation,
-                                DICOMObjectAnnotation, VideoObjectAnnotation,
-                                ObjectAnnotation, ClassificationAnnotation,
-                                ScalarMetric, ConfusionMatrixMetric]]
+        self,
+        data_row: DataRow,
+        annotations: List[Union[
+            TextEntity,
+            ConversationEntity,
+            VideoClassificationAnnotation,
+            DICOMObjectAnnotation,
+            VideoObjectAnnotation,
+            ObjectAnnotation,
+            ClassificationAnnotation,
+            ScalarMetric,
+            ConfusionMatrixMetric,
+        ]],
     ) -> Union[TextData, VideoData, ImageData]:
         if len(annotations) == 0:
             raise ValueError("Missing annotations while inferring media type")
@@ -180,8 +220,9 @@ class NDLabel(BaseModel):
 
     @classmethod
     def _get_segment_frame_ranges(
-        cls, annotation_group: List[Union[VideoClassificationAnnotation,
-                                          VideoObjectAnnotation]]
+        cls,
+        annotation_group: List[Union[VideoClassificationAnnotation,
+                                     VideoObjectAnnotation]],
     ) -> List[Tuple[int, int]]:
         sorted_frame_segment_indices = sorted([
             (annotation.frame, annotation.segment_index)
@@ -215,7 +256,6 @@ class NDLabel(BaseModel):
     def _create_video_annotations(
         cls, label: Label
     ) -> Generator[Union[NDChecklistSubclass, NDRadioSubclass], None, None]:
-
         video_annotations = defaultdict(list)
         for annot in label.annotations:
             if isinstance(
@@ -233,8 +273,8 @@ class NDLabel(BaseModel):
                 annotation = annotation_group[0]
                 frames_data = []
                 for frames in segment_frame_ranges:
-                    frames_data.append({'start': frames[0], 'end': frames[-1]})
-                annotation.extra.update({'frames': frames_data})
+                    frames_data.append({"start": frames[0], "end": frames[-1]})
+                annotation.extra.update({"frames": frames_data})
                 yield NDClassification.from_common(annotation, label.data)
 
             elif isinstance(annotation_group[0], VideoObjectAnnotation):
@@ -242,7 +282,8 @@ class NDLabel(BaseModel):
                 for start_frame, end_frame in segment_frame_ranges:
                     segment = []
                     for annotation in annotation_group:
-                        if annotation.keyframe and start_frame <= annotation.frame <= end_frame:
+                        if (annotation.keyframe and
+                                start_frame <= annotation.frame <= end_frame):
                             segment.append(annotation)
                     segments.append(segment)
                 yield NDObject.from_common(segments, label.data)
@@ -250,10 +291,14 @@ class NDLabel(BaseModel):
     @classmethod
     def _create_non_video_annotations(cls, label: Label):
         non_video_annotations = [
-            annot for annot in label.annotations
-            if not isinstance(annot, (VideoClassificationAnnotation,
-                                      VideoObjectAnnotation,
-                                      VideoMaskAnnotation))
+            annot for annot in label.annotations if not isinstance(
+                annot,
+                (
+                    VideoClassificationAnnotation,
+                    VideoObjectAnnotation,
+                    VideoMaskAnnotation,
+                ),
+            )
         ]
         for annotation in non_video_annotations:
             if isinstance(annotation, ClassificationAnnotation):

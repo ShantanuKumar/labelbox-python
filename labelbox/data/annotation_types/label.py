@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Any, Callable, Dict, List, Union, Optional
 import warnings
 
-from pydantic import BaseModel, validator
+from pydantic.v1 import BaseModel, validator
 
 import labelbox
 from labelbox.data.annotation_types.data.tiled_image import TiledImageData
@@ -10,7 +10,20 @@ from labelbox.schema import ontology
 from .annotation import ClassificationAnnotation, ObjectAnnotation
 from .relationship import RelationshipAnnotation
 from .classification import ClassificationAnswer
-from .data import AudioData, ConversationData, DicomData, DocumentData, HTMLData, ImageData, MaskData, TextData, VideoData, LlmPromptCreationData, LlmPromptResponseCreationData, LlmResponseCreationData
+from .data import (
+    AudioData,
+    ConversationData,
+    DicomData,
+    DocumentData,
+    HTMLData,
+    ImageData,
+    MaskData,
+    TextData,
+    VideoData,
+    LlmPromptCreationData,
+    LlmPromptResponseCreationData,
+    LlmResponseCreationData,
+)
 from .geometry import Mask
 from .metrics import ScalarMetric, ConfusionMatrixMetric
 from .types import Cuid
@@ -18,10 +31,20 @@ from .video import VideoClassificationAnnotation
 from .video import VideoObjectAnnotation, VideoMaskAnnotation
 from ..ontology import get_feature_schema_lookup
 
-DataType = Union[VideoData, ImageData, TextData, TiledImageData, AudioData,
-                 ConversationData, DicomData, DocumentData, HTMLData,
-                 LlmPromptCreationData, LlmPromptResponseCreationData,
-                 LlmResponseCreationData]
+DataType = Union[
+    VideoData,
+    ImageData,
+    TextData,
+    TiledImageData,
+    AudioData,
+    ConversationData,
+    DicomData,
+    DocumentData,
+    HTMLData,
+    LlmPromptCreationData,
+    LlmPromptResponseCreationData,
+    LlmResponseCreationData,
+]
 
 
 class Label(BaseModel):
@@ -43,12 +66,17 @@ class Label(BaseModel):
         annotations: List of Annotations in the label
         extra: additional context
     """
+
     uid: Optional[Cuid] = None
     data: DataType
-    annotations: List[Union[ClassificationAnnotation, ObjectAnnotation,
-                            VideoMaskAnnotation, ScalarMetric,
-                            ConfusionMatrixMetric,
-                            RelationshipAnnotation]] = []
+    annotations: List[Union[
+        ClassificationAnnotation,
+        ObjectAnnotation,
+        VideoMaskAnnotation,
+        ScalarMetric,
+        ConfusionMatrixMetric,
+        RelationshipAnnotation,
+    ]] = []
     extra: Dict[str, Any] = {}
 
     def object_annotations(self) -> List[ObjectAnnotation]:
@@ -64,7 +92,7 @@ class Label(BaseModel):
         ]
 
     def frame_annotations(
-        self
+        self,
     ) -> Dict[str, Union[VideoObjectAnnotation, VideoClassificationAnnotation]]:
         frame_dict = defaultdict(list)
         for annotation in self.annotations:
@@ -124,9 +152,9 @@ class Label(BaseModel):
         Returns:
             Label with updated references to new data row
         """
-        args = {'row_data': self.data.create_url(signer)}
+        args = {"row_data": self.data.create_url(signer)}
         if self.data.external_id is not None:
-            args.update({'external_id': self.data.external_id})
+            args.update({"external_id": self.data.external_id})
 
         if self.data.uid is None:
             data_row = dataset.create_data_row(**args)
@@ -193,7 +221,7 @@ class Label(BaseModel):
     def validate_union(cls, value):
         supported = tuple([
             field.type_
-            for field in cls.__fields__['annotations'].sub_fields[0].sub_fields
+            for field in cls.__fields__["annotations"].sub_fields[0].sub_fields
         ])
         if not isinstance(value, list):
             raise TypeError(f"Annotations must be a list. Found {type(value)}")

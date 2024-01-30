@@ -5,8 +5,8 @@ from typing_extensions import Literal
 
 from PIL import Image
 from google.api_core import retry
-from pydantic import BaseModel
-from pydantic import root_validator
+from pydantic.v1 import BaseModel
+from pydantic.v1 import root_validator
 from requests.exceptions import ConnectTimeout
 import requests
 import numpy as np
@@ -17,17 +17,19 @@ from ..types import TypedArray
 
 
 class RasterData(BaseModel, ABC):
-    """Represents an image or segmentation mask.
-    """
+    """Represents an image or segmentation mask."""
+
     im_bytes: Optional[bytes] = None
     file_path: Optional[str] = None
     url: Optional[str] = None
-    arr: Optional[TypedArray[Literal['uint8']]] = None
+    arr: Optional[TypedArray[Literal["uint8"]]] = None
 
     @classmethod
-    def from_2D_arr(cls, arr: Union[TypedArray[Literal['uint8']],
-                                    TypedArray[Literal['int']]],
-                    **kwargs) -> "RasterData":
+    def from_2D_arr(
+        cls,
+        arr: Union[TypedArray[Literal["uint8"]], TypedArray[Literal["int"]]],
+        **kwargs,
+    ) -> "RasterData":
         """Construct from a 2D numpy array
 
         Args:
@@ -114,11 +116,12 @@ class RasterData(BaseModel, ABC):
             raise ValueError("Must set either url, file_path or im_bytes")
 
     def set_fetch_fn(self, fn):
-        object.__setattr__(self, 'fetch_remote', lambda: fn(self))
+        object.__setattr__(self, "fetch_remote", lambda: fn(self))
 
-    @retry.Retry(deadline=15.,
-                 predicate=retry.if_exception_type(ConnectTimeout,
-                                                   InternalServerError))
+    @retry.Retry(
+        deadline=15.0,
+        predicate=retry.if_exception_type(ConnectTimeout, InternalServerError),
+    )
     def fetch_remote(self) -> bytes:
         """
         Method for accessing url.
@@ -132,7 +135,7 @@ class RasterData(BaseModel, ABC):
         response.raise_for_status()
         return response.content
 
-    @retry.Retry(deadline=30.)
+    @retry.Retry(deadline=30.0)
     def create_url(self, signer: Callable[[bytes], str]) -> str:
         """
         Utility for creating a url from any of the other image representations.
@@ -147,7 +150,7 @@ class RasterData(BaseModel, ABC):
         elif self.im_bytes is not None:
             self.url = signer(self.im_bytes)
         elif self.file_path is not None:
-            with open(self.file_path, 'rb') as file:
+            with open(self.file_path, "rb") as file:
                 self.url = signer(file.read())
         elif self.arr is not None:
             self.url = signer(self.np_to_bytes(self.arr))
@@ -162,8 +165,8 @@ class RasterData(BaseModel, ABC):
         im_bytes = values.get("im_bytes")
         url = values.get("url")
         arr = values.get("arr")
-        uid = values.get('uid')
-        global_key = values.get('global_key')
+        uid = values.get("uid")
+        global_key = values.get("global_key")
         if uid == file_path == im_bytes == url == global_key == None and arr is None:
             raise ValueError(
                 "One of `file_path`, `im_bytes`, `url`, `uid`, `global_key` or `arr` required."
@@ -180,17 +183,18 @@ class RasterData(BaseModel, ABC):
         return values
 
     def __repr__(self) -> str:
-        symbol_or_none = lambda data: '...' if data is not None else None
-        return f"{self.__class__.__name__}(im_bytes={symbol_or_none(self.im_bytes)}," \
-               f"file_path={self.file_path}," \
-               f"url={self.url}," \
-               f"arr={symbol_or_none(self.arr)})"
+        symbol_or_none = lambda data: "..." if data is not None else None
+        return (
+            f"{self.__class__.__name__}(im_bytes={symbol_or_none(self.im_bytes)},"
+            f"file_path={self.file_path},"
+            f"url={self.url},"
+            f"arr={symbol_or_none(self.arr)})")
 
     class Config:
         # Required for sharing references
-        copy_on_model_validation = 'none'
+        copy_on_model_validation = "none"
         # Required for discriminating between data types
-        extra = 'forbid'
+        extra = "forbid"
 
 
 class MaskData(RasterData):

@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Optional, Dict, List, Any
 
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 
 class BaseData(BaseModel, ABC):
@@ -9,6 +9,7 @@ class BaseData(BaseModel, ABC):
     Base class for objects representing data.
     This class shouldn't directly be used
     """
+
     external_id: Optional[str] = None
     uid: Optional[str] = None
     global_key: Optional[str] = None

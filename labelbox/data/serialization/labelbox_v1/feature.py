@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, root_validator
+from pydantic.v1 import BaseModel, root_validator
 
 from labelbox.utils import camel_case
 from ...annotation_types.types import Cuid
@@ -15,15 +15,15 @@ class LBV1Feature(BaseModel):
 
     @root_validator
     def check_ids(cls, values):
-        if values.get('value') is None:
-            values['value'] = values['title']
+        if values.get("value") is None:
+            values["value"] = values["title"]
         return values
 
     def dict(self, *args, **kwargs):
         res = super().dict(*args, **kwargs)
         # This means these are no video frames ..
         if self.keyframe is None:
-            res.pop('keyframe')
+            res.pop("keyframe")
         return res
 
     class Config:

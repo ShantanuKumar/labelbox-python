@@ -6,9 +6,18 @@ from pathlib import Path
 
 import numpy as np
 from tqdm import tqdm
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
-from ...annotation_types import ImageData, MaskData, Mask, ObjectAnnotation, Label, Polygon, Point, Rectangle
+from ...annotation_types import (
+    ImageData,
+    MaskData,
+    Mask,
+    ObjectAnnotation,
+    Label,
+    Polygon,
+    Point,
+    Rectangle,
+)
 from ...annotation_types.collection import LabelCollection
 from .categories import Categories, hash_category_name
 from .annotation import COCOObjectAnnotation, RLE, get_annotation_lookup, rle_decoding
@@ -38,7 +47,8 @@ def mask_to_coco_object_annotation(
         ],
         area=area,
         bbox=[xmin, ymin, xmax - xmin, ymax - ymin],
-        iscrowd=0)
+        iscrowd=0,
+    )
 
 
 def vector_to_coco_object_annotation(annotation: ObjectAnnotation,
@@ -53,23 +63,33 @@ def vector_to_coco_object_annotation(annotation: ObjectAnnotation,
     else:
         box = annotation.value
         segmentation.extend([
-            box.start.x, box.start.y, box.end.x, box.start.y, box.end.x,
-            box.end.y, box.start.x, box.end.y
+            box.start.x,
+            box.start.y,
+            box.end.x,
+            box.start.y,
+            box.end.x,
+            box.end.y,
+            box.start.x,
+            box.end.y,
         ])
 
-    return COCOObjectAnnotation(id=annot_idx,
-                                image_id=image_id,
-                                category_id=category_id,
-                                segmentation=[segmentation],
-                                area=shapely.area,
-                                bbox=[xmin, ymin, xmax - xmin, ymax - ymin],
-                                iscrowd=0)
+    return COCOObjectAnnotation(
+        id=annot_idx,
+        image_id=image_id,
+        category_id=category_id,
+        segmentation=[segmentation],
+        area=shapely.area,
+        bbox=[xmin, ymin, xmax - xmin, ymax - ymin],
+        iscrowd=0,
+    )
 
 
 def rle_to_common(class_annotations: COCOObjectAnnotation,
                   class_name: str) -> ObjectAnnotation:
-    mask = rle_decoding(class_annotations.segmentation.counts,
-                        *class_annotations.segmentation.size[::-1])
+    mask = rle_decoding(
+        class_annotations.segmentation.counts,
+        *class_annotations.segmentation.size[::-1],
+    )
     return ObjectAnnotation(name=class_name,
                             value=Mask(mask=MaskData.from_2D_arr(mask),
                                        color=[1, 1, 1]))
@@ -81,11 +101,13 @@ def segmentations_to_common(class_annotations: COCOObjectAnnotation,
     annotations = []
     for points in class_annotations.segmentation:
         annotations.append(
-            ObjectAnnotation(name=class_name,
-                             value=Polygon(points=[
-                                 Point(x=points[i], y=points[i + 1])
-                                 for i in range(0, len(points), 2)
-                             ])))
+            ObjectAnnotation(
+                name=class_name,
+                value=Polygon(points=[
+                    Point(x=points[i], y=points[i + 1])
+                    for i in range(0, len(points), 2)
+                ]),
+            ))
     return annotations
 
 
@@ -156,7 +178,6 @@ class CocoInstanceDataset(BaseModel):
                     future.result() for future in tqdm(as_completed(futures))
                 ]
         else:
-
             results = [
                 process_label(label, idx, image_root)
                 for idx, label in enumerate(labels)
@@ -174,16 +195,18 @@ class CocoInstanceDataset(BaseModel):
         categories = [
             Categories(id=category_mapping[idx],
                        name=name,
-                       supercategory='all',
+                       supercategory="all",
                        isthing=1) for name, idx in coco_categories.items()
         ]
         for annot in all_coco_annotations:
             annot.category_id = category_mapping[annot.category_id]
 
-        return CocoInstanceDataset(info={'image_root': image_root},
-                                   images=images,
-                                   annotations=all_coco_annotations,
-                                   categories=categories)
+        return CocoInstanceDataset(
+            info={"image_root": image_root},
+            images=images,
+            annotations=all_coco_annotations,
+            categories=categories,
+        )
 
     def to_common(self, image_root):
         category_lookup = {
@@ -204,11 +227,13 @@ class CocoInstanceDataset(BaseModel):
                 if isinstance(class_annotations.segmentation, RLE):
                     annotations.append(
                         rle_to_common(
-                            class_annotations, category_lookup[
-                                class_annotations.category_id].name))
+                            class_annotations,
+                            category_lookup[class_annotations.category_id].name,
+                        ))
                 elif isinstance(class_annotations.segmentation, list):
                     annotations.extend(
                         segmentations_to_common(
-                            class_annotations, category_lookup[
-                                class_annotations.category_id].name))
+                            class_annotations,
+                            category_lookup[class_annotations.category_id].name,
+                        ))
             yield Label(data=data, annotations=annotations)

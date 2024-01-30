@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel, validator
+from pydantic.v1 import BaseModel, validator
 
 from labelbox.utils import _CamelCaseMixin
 
@@ -18,5 +18,6 @@ class DocumentTextSelection(_CamelCaseMixin, BaseModel):
 
 
 class DocumentEntity(_CamelCaseMixin, BaseModel):
-    """ Represents a text entity """
+    """Represents a text entity"""
+
     text_selections: List[DocumentTextSelection]

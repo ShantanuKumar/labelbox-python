@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from enum import Enum
 from labelbox.data.annotation_types.annotation import BaseAnnotation, ObjectAnnotation
 

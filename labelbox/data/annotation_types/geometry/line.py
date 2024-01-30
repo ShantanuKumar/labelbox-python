@@ -3,7 +3,7 @@ from typing import List, Optional, Union, Tuple
 import geojson
 import numpy as np
 import cv2
-from pydantic import validator
+from pydantic.v1 import validator
 
 from shapely.geometry import LineString as SLineString
 
@@ -20,6 +20,7 @@ class Line(Geometry):
     >>> Line(points = [Point(x=3,y=4), Point(x=3,y=5)])
 
     """
+
     points: List[Point]
 
     @property
@@ -34,16 +35,18 @@ class Line(Geometry):
             raise TypeError(
                 f"Expected Shapely Line. Got {shapely_obj.geom_type}")
 
-        obj_coords = shapely_obj.__geo_interface__['coordinates']
+        obj_coords = shapely_obj.__geo_interface__["coordinates"]
         return Line(
             points=[Point(x=coords[0], y=coords[1]) for coords in obj_coords])
 
-    def draw(self,
-             height: Optional[int] = None,
-             width: Optional[int] = None,
-             canvas: Optional[np.ndarray] = None,
-             color: Union[int, Tuple[int, int, int]] = (255, 255, 255),
-             thickness: int = 1) -> np.ndarray:
+    def draw(
+        self,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        canvas: Optional[np.ndarray] = None,
+        color: Union[int, Tuple[int, int, int]] = (255, 255, 255),
+        thickness: int = 1,
+    ) -> np.ndarray:
         """
         Draw the line onto a 3d mask
         Args:
@@ -57,14 +60,14 @@ class Line(Geometry):
             numpy array representing the mask with the line drawn on it.
         """
         canvas = self.get_or_create_canvas(height, width, canvas)
-        pts = np.array(self.geometry['coordinates']).astype(np.int32)
+        pts = np.array(self.geometry["coordinates"]).astype(np.int32)
         return cv2.polylines(canvas,
                              pts,
                              False,
                              color=color,
                              thickness=thickness)
 
-    @validator('points')
+    @validator("points")
     def is_geom_valid(cls, points):
         if len(points) < 2:
             raise ValueError(

@@ -1,9 +1,14 @@
 import pytest
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
-from labelbox.data.annotation_types import (Checklist, ClassificationAnswer,
-                                            Dropdown, Radio, Text,
-                                            ClassificationAnnotation)
+from labelbox.data.annotation_types import (
+    Checklist,
+    ClassificationAnswer,
+    Dropdown,
+    Radio,
+    Text,
+    ClassificationAnnotation,
+)
 
 
 def test_classification_answer():
@@ -30,7 +35,7 @@ def test_classification():
     answer = "1234"
     classification = ClassificationAnnotation(value=Text(answer=answer),
                                               name="a classification")
-    assert classification.dict()['value']['answer'] == answer
+    assert classification.dict()["value"]["answer"] == answer
 
     with pytest.raises(ValidationError):
         ClassificationAnnotation()
@@ -46,40 +51,40 @@ def test_subclass():
     classification = ClassificationAnnotation(value=Text(answer=answer),
                                               name=name)
     assert classification.dict() == {
-        'name': name,
-        'feature_schema_id': None,
-        'extra': {},
-        'value': {
-            'answer': answer
+        "name": name,
+        "feature_schema_id": None,
+        "extra": {},
+        "value": {
+            "answer": answer
         },
-        'message_id': None,
+        "message_id": None,
     }
     classification = ClassificationAnnotation(
         value=Text(answer=answer),
         name=name,
         feature_schema_id=feature_schema_id)
     assert classification.dict() == {
-        'name': None,
-        'feature_schema_id': feature_schema_id,
-        'extra': {},
-        'value': {
-            'answer': answer
+        "name": None,
+        "feature_schema_id": feature_schema_id,
+        "extra": {},
+        "value": {
+            "answer": answer
         },
-        'name': name,
-        'message_id': None,
+        "name": name,
+        "message_id": None,
     }
     classification = ClassificationAnnotation(
         value=Text(answer=answer),
         feature_schema_id=feature_schema_id,
         name=name)
     assert classification.dict() == {
-        'name': name,
-        'feature_schema_id': feature_schema_id,
-        'extra': {},
-        'value': {
-            'answer': answer
+        "name": name,
+        "feature_schema_id": feature_schema_id,
+        "extra": {},
+        "value": {
+            "answer": answer
         },
-        'message_id': None,
+        "message_id": None,
     }
 
 
@@ -96,11 +101,11 @@ def test_radio():
         classification = Radio(answer=[answer])
     classification = Radio(answer=answer,)
     assert classification.dict() == {
-        'answer': {
-            'name': answer.name,
-            'feature_schema_id': None,
-            'extra': {},
-            'confidence': 0.81,
+        "answer": {
+            "name": answer.name,
+            "feature_schema_id": None,
+            "extra": {},
+            "confidence": 0.81,
         }
     }
     classification = ClassificationAnnotation(
@@ -108,18 +113,18 @@ def test_radio():
         feature_schema_id=feature_schema_id,
         name=name)
     assert classification.dict() == {
-        'name': name,
-        'feature_schema_id': feature_schema_id,
-        'extra': {},
-        'value': {
-            'answer': {
-                'name': answer.name,
-                'feature_schema_id': None,
-                'extra': {},
-                'confidence': 0.81
+        "name": name,
+        "feature_schema_id": feature_schema_id,
+        "extra": {},
+        "value": {
+            "answer": {
+                "name": answer.name,
+                "feature_schema_id": None,
+                "extra": {},
+                "confidence": 0.81,
             }
         },
-        'message_id': None,
+        "message_id": None,
     }
 
 
@@ -136,11 +141,11 @@ def test_checklist():
 
     classification = Checklist(answer=[answer])
     assert classification.dict() == {
-        'answer': [{
-            'name': answer.name,
-            'feature_schema_id': None,
-            'extra': {},
-            'confidence': 0.99
+        "answer": [{
+            "name": answer.name,
+            "feature_schema_id": None,
+            "extra": {},
+            "confidence": 0.99,
         }]
     }
     classification = ClassificationAnnotation(
@@ -149,18 +154,18 @@ def test_checklist():
         name=name,
     )
     assert classification.dict() == {
-        'name': name,
-        'feature_schema_id': feature_schema_id,
-        'extra': {},
-        'value': {
-            'answer': [{
-                'name': answer.name,
-                'feature_schema_id': None,
-                'extra': {},
-                'confidence': 0.99
+        "name": name,
+        "feature_schema_id": feature_schema_id,
+        "extra": {},
+        "value": {
+            "answer": [{
+                "name": answer.name,
+                "feature_schema_id": None,
+                "extra": {},
+                "confidence": 0.99,
             }]
         },
-        'message_id': None,
+        "message_id": None,
     }
 
 
@@ -177,11 +182,11 @@ def test_dropdown():
         classification = Dropdown(answer=answer)
     classification = Dropdown(answer=[answer])
     assert classification.dict() == {
-        'answer': [{
-            'name': '1',
-            'feature_schema_id': None,
-            'extra': {},
-            'confidence': 1
+        "answer": [{
+            "name": "1",
+            "feature_schema_id": None,
+            "extra": {},
+            "confidence": 1
         }]
     }
     classification = ClassificationAnnotation(
@@ -189,16 +194,16 @@ def test_dropdown():
         feature_schema_id=feature_schema_id,
         name=name)
     assert classification.dict() == {
-        'name': name,
-        'feature_schema_id': feature_schema_id,
-        'extra': {},
-        'value': {
-            'answer': [{
-                'name': answer.name,
-                'feature_schema_id': None,
-                'confidence': 1,
-                'extra': {}
+        "name": name,
+        "feature_schema_id": feature_schema_id,
+        "extra": {},
+        "value": {
+            "answer": [{
+                "name": answer.name,
+                "feature_schema_id": None,
+                "confidence": 1,
+                "extra": {},
             }]
         },
-        'message_id': None,
+        "message_id": None,
     }

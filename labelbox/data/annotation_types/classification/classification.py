@@ -9,17 +9,17 @@ try:
 except:
     from typing_extensions import Literal
 
-from pydantic import BaseModel, validator
+from pydantic.v1 import BaseModel, validator
 from ..feature import FeatureSchema
 
 
-# TODO: Replace when pydantic adds support for unions that don't coerce types
+# TODO: Replace when pydantic.v1 adds support for unions that don't coerce types
 class _TempName(ConfidenceMixin, BaseModel):
     name: str
 
     def dict(self, *args, **kwargs):
         res = super().dict(*args, **kwargs)
-        res.pop('name')
+        res.pop("name")
         return res
 
 
@@ -34,44 +34,48 @@ class ClassificationAnswer(FeatureSchema, ConfidenceMixin):
         So unlike object annotations, classification annotations
           track keyframes at a classification answer level.
     """
+
     extra: Dict[str, Any] = {}
     keyframe: Optional[bool] = None
-    classifications: List['ClassificationAnnotation'] = []
+    classifications: List["ClassificationAnnotation"] = []
 
     def dict(self, *args, **kwargs) -> Dict[str, str]:
         res = super().dict(*args, **kwargs)
-        if res['keyframe'] is None:
-            res.pop('keyframe')
-        if res['classifications'] == []:
-            res.pop('classifications')
+        if res["keyframe"] is None:
+            res.pop("keyframe")
+        if res["classifications"] == []:
+            res.pop("classifications")
         return res
 
 
 class Radio(ConfidenceMixin, BaseModel):
-    """ A classification with only one selected option allowed
+    """A classification with only one selected option allowed
 
     >>> Radio(answer = ClassificationAnswer(name = "dog"))
 
     """
+
     answer: ClassificationAnswer
 
 
 class Checklist(_TempName):
-    """ A classification with many selected options allowed
+    """A classification with many selected options allowed
 
     >>> Checklist(answer = [ClassificationAnswer(name = "cloudy")])
 
     """
+
     name: Literal["checklist"] = "checklist"
     answer: List[ClassificationAnswer]
 
 
 class Text(ConfidenceMixin, BaseModel):
-    """ Free form text
+    """Free form text
 
     >>> Text(answer = "some text answer")
 
     """
+
     answer: str
 
 
@@ -82,8 +86,9 @@ class Dropdown(_TempName):
 
     Deprecation Notice: Dropdown classification is deprecated and will be
         removed in a future release. Dropdown will also
-        no longer be able to be created in the Editor on 3/31/2022.    
+        no longer be able to be created in the Editor on 3/31/2022.
     """
+
     name: Literal["dropdown"] = "dropdown"
     answer: List[ClassificationAnswer]
 
@@ -107,7 +112,7 @@ class ClassificationAnnotation(BaseAnnotation, ConfidenceMixin):
         feature_schema_id (Optional[Cuid])
         value (Union[Text, Checklist, Radio, Dropdown])
         extra (Dict[str, Any])
-     """
+    """
 
     value: Union[Text, Checklist, Radio, Dropdown]
     message_id: Optional[str] = None

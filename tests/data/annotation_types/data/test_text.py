@@ -1,7 +1,7 @@
 import os
 
 import pytest
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from labelbox.data.annotation_types import TextData
 
@@ -31,7 +31,7 @@ def test_url():
 def test_file(tmpdir):
     content = "foo bar baz"
     file = "hello.txt"
-    dir = tmpdir.mkdir('data')
+    dir = tmpdir.mkdir("data")
     dir.join(file).write(content)
     text_data = TextData(file_path=os.path.join(dir.strpath, file))
     assert len(text_data.value) == len(content)
@@ -42,11 +42,13 @@ def test_ref():
     uid = "uid"
     metadata = []
     media_attributes = {}
-    data = TextData(text="hello world",
-                    external_id=external_id,
-                    uid=uid,
-                    metadata=metadata,
-                    media_attributes=media_attributes)
+    data = TextData(
+        text="hello world",
+        external_id=external_id,
+        uid=uid,
+        metadata=metadata,
+        media_attributes=media_attributes,
+    )
     assert data.external_id == external_id
     assert data.uid == uid
     assert data.media_attributes == media_attributes

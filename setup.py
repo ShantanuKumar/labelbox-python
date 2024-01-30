@@ -20,7 +20,7 @@ setuptools.setup(
     url="https://labelbox.com",
     packages=setuptools.find_packages(),
     install_requires=[
-        "requests>=2.22.0", "google-api-core>=1.22.1", "pydantic>=1.8,<2.0",
+        "requests>=2.22.0", "google-api-core>=1.22.1", "pydantic>=2.0,<3.0",
         "tqdm", "python-dateutil>=2.8.2,<2.9.0"
     ],
     extras_require={

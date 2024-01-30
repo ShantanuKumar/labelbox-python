@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import Tuple, Dict, Union
 
-from pydantic import conint, Field
-from pydantic.main import BaseModel
+from pydantic.v1 import conint, Field
+from pydantic.v1.main import BaseModel
 
 from .base import ConfidenceValue, BaseMetric
 
@@ -18,7 +18,7 @@ class ConfusionMatrixAggregation(Enum):
 
 
 class ConfusionMatrixMetric(BaseMetric):
-    """ Class representing confusion matrix metrics.
+    """Class representing confusion matrix metrics.
 
     In the editor, this provides precision, recall, and f-scores.
     This should be used over multiple scalar metrics so that aggregations are accurate.
@@ -28,6 +28,7 @@ class ConfusionMatrixMetric(BaseMetric):
 
     aggregation cannot be adjusted for confusion matrix metrics.
     """
+
     metric_name: str
     value: Union[ConfusionMatrixMetricValue,
                  ConfusionMatrixMetricConfidenceValue]

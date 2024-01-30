@@ -4,7 +4,7 @@ from io import BytesIO
 import numpy as np
 import pytest
 from PIL import Image
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from labelbox.data.annotation_types.data import ImageData
 
@@ -42,11 +42,13 @@ def test_ref():
     uid = "uid"
     metadata = []
     media_attributes = {}
-    data = ImageData(im_bytes=b'',
-                     external_id=external_id,
-                     uid=uid,
-                     metadata=metadata,
-                     media_attributes=media_attributes)
+    data = ImageData(
+        im_bytes=b"",
+        external_id=external_id,
+        uid=uid,
+        metadata=metadata,
+        media_attributes=media_attributes,
+    )
     assert data.external_id == external_id
     assert data.uid == uid
     assert data.media_attributes == media_attributes

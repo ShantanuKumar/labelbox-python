@@ -5,14 +5,25 @@ import functools
 
 import logging
 from pathlib import Path
-import pydantic
+import pydantic.v1
 from google.api_core import retry
 from labelbox import parser
 import requests
-from pydantic import BaseModel, root_validator, validator
+from pydantic.v1 import BaseModel, root_validator, validator
 from typing_extensions import Literal
-from typing import (Any, List, Optional, BinaryIO, Dict, Iterable, Tuple, Union,
-                    Type, Set, TYPE_CHECKING)
+from typing import (
+    Any,
+    List,
+    Optional,
+    BinaryIO,
+    Dict,
+    Iterable,
+    Tuple,
+    Union,
+    Type,
+    Set,
+    TYPE_CHECKING,
+)
 
 from labelbox import exceptions as lb_exceptions
 from labelbox.orm.model import Entity
@@ -56,20 +67,22 @@ def _make_request_data(project_id: str, name: str, content_length: int,
         "projectId": project_id,
         "name": name,
         "file": None,
-        "contentLength": content_length
+        "contentLength": content_length,
     }
     operations = json.dumps({"variables": variables, "query": query_str})
 
     return {
         "operations": operations,
-        "map": (None, json.dumps({file_name: ["variables.file"]}))
+        "map": (None, json.dumps({file_name: ["variables.file"]})),
     }
 
 
 def _send_create_file_command(
-        client, request_data: dict, file_name: str,
-        file_data: Tuple[str, Union[bytes, BinaryIO], str]) -> dict:
-
+    client,
+    request_data: dict,
+    file_name: str,
+    file_data: Tuple[str, Union[bytes, BinaryIO], str],
+) -> dict:
     response = client.execute(data=request_data, files={file_name: file_data})
 
     if not response.get("createBulkImportRequest", None):
@@ -94,6 +107,7 @@ class BulkImportRequest(DbObject):
         project (Relationship): `ToOne` relationship to Project
         created_by (Relationship): `ToOne` relationship to User
     """
+
     name = Field.String("name")
     state = Field.Enum(BulkImportRequestState, "state")
     input_file_url = Field.String("input_file_url")
@@ -175,8 +189,7 @@ class BulkImportRequest(DbObject):
         return parser.loads(response.text)
 
     def refresh(self) -> None:
-        """Synchronizes values of all fields with the database.
-        """
+        """Synchronizes values of all fields with the database."""
         query_str, params = query.get_single(BulkImportRequest, self.uid)
         res = self.client.execute(query_str, params)
         res = res[utils.camel_case(BulkImportRequest.type_name())]
@@ -197,16 +210,18 @@ class BulkImportRequest(DbObject):
             time.sleep(sleep_time_seconds)
             self.__exponential_backoff_refresh()
 
-    @retry.Retry(predicate=retry.if_exception_type(lb_exceptions.ApiLimitError,
-                                                   lb_exceptions.TimeoutError,
-                                                   lb_exceptions.NetworkError))
+    @retry.Retry(predicate=retry.if_exception_type(
+        lb_exceptions.ApiLimitError,
+        lb_exceptions.TimeoutError,
+        lb_exceptions.NetworkError,
+    ))
     def __exponential_backoff_refresh(self) -> None:
         self.refresh()
 
     @classmethod
     def from_name(cls, client, project_id: str,
-                  name: str) -> 'BulkImportRequest':
-        """ Fetches existing BulkImportRequest.
+                  name: str) -> "BulkImportRequest":
+        """Fetches existing BulkImportRequest.
 
         Args:
             client (Client): a Labelbox client
@@ -228,7 +243,7 @@ class BulkImportRequest(DbObject):
         """ % query.results_query_part(cls)
         params = {"projectId": project_id, "name": name}
         response = client.execute(query_str, params=params)
-        return cls(client, response['bulkImportRequest'])
+        return cls(client, response["bulkImportRequest"])
 
     @classmethod
     def create_from_url(cls,
@@ -236,7 +251,7 @@ class BulkImportRequest(DbObject):
                         project_id: str,
                         name: str,
                         url: str,
-                        validate=True) -> 'BulkImportRequest':
+                        validate=True) -> "BulkImportRequest":
         """
         Creates a BulkImportRequest from a publicly accessible URL
         to an ndjson file with predictions.
@@ -276,13 +291,14 @@ class BulkImportRequest(DbObject):
                    bulk_import_request_response["createBulkImportRequest"])
 
     @classmethod
-    def create_from_objects(cls,
-                            client,
-                            project_id: str,
-                            name: str,
-                            predictions: Union[Iterable[Dict],
-                                               Iterable["Label"]],
-                            validate=True) -> 'BulkImportRequest':
+    def create_from_objects(
+        cls,
+        client,
+        project_id: str,
+        name: str,
+        predictions: Union[Iterable[Dict], Iterable["Label"]],
+        validate=True,
+    ) -> "BulkImportRequest":
         """
         Creates a `BulkImportRequest` from an iterable of dictionaries.
 
@@ -322,9 +338,9 @@ class BulkImportRequest(DbObject):
 
         data_str = parser.dumps(ndjson_predictions)
         if not data_str:
-            raise ValueError('annotations cannot be empty')
+            raise ValueError("annotations cannot be empty")
 
-        data = data_str.encode('utf-8')
+        data = data_str.encode("utf-8")
         file_name = _make_file_name(project_id, name)
         request_data = _make_request_data(project_id, name, len(data_str),
                                           file_name)
@@ -342,7 +358,7 @@ class BulkImportRequest(DbObject):
                                project_id: str,
                                name: str,
                                file: Path,
-                               validate_file=True) -> 'BulkImportRequest':
+                               validate_file=True) -> "BulkImportRequest":
         """
         Creates a BulkImportRequest from a local ndjson file with predictions.
 
@@ -362,7 +378,7 @@ class BulkImportRequest(DbObject):
         request_data = _make_request_data(project_id, name, content_length,
                                           file_name)
 
-        with file.open('rb') as f:
+        with file.open("rb") as f:
             if validate_file:
                 reader = parser.reader(f)
                 # ensure that the underlying json load call is valid
@@ -381,7 +397,7 @@ class BulkImportRequest(DbObject):
         return cls(client, response_data["createBulkImportRequest"])
 
     def delete(self) -> None:
-        """ Deletes the import job and also any annotations created by this import.
+        """Deletes the import job and also any annotations created by this import.
 
         Returns:
             None
@@ -392,7 +408,10 @@ class BulkImportRequest(DbObject):
                 id
                 name
             }
-        }""" % (id_param, id_param)
+        }""" % (
+            id_param,
+            id_param,
+        )
         self.client.execute(query_str, {id_param: self.uid})
 
 
@@ -426,15 +445,16 @@ def _validate_ndjson(lines: Iterable[Dict[str, Any]],
             uuid = str(annotation.uuid)
             if uuid in uids:
                 raise lb_exceptions.UuidError(
-                    f'{uuid} already used in this import job, '
-                    'must be unique for the project.')
+                    f"{uuid} already used in this import job, "
+                    "must be unique for the project.")
             uids.add(uuid)
-        except (pydantic.ValidationError, ValueError, TypeError, KeyError) as e:
+        except (pydantic.v1.ValidationError, ValueError, TypeError,
+                KeyError) as e:
             raise lb_exceptions.MALValidationError(
                 f"Invalid NDJson on line {idx}") from e
 
 
-#The rest of this file contains objects for MAL validation
+# The rest of this file contains objects for MAL validation
 def parse_classification(tool):
     """
     Parses a classification from an ontology. Only radio, checklist, and text are supported for mal
@@ -445,20 +465,20 @@ def parse_classification(tool):
     Returns:
         dict
     """
-    if tool['type'] in ['radio', 'checklist']:
-        option_schema_ids = [r['featureSchemaId'] for r in tool['options']]
-        option_names = [r['value'] for r in tool['options']]
+    if tool["type"] in ["radio", "checklist"]:
+        option_schema_ids = [r["featureSchemaId"] for r in tool["options"]]
+        option_names = [r["value"] for r in tool["options"]]
         return {
-            'tool': tool['type'],
-            'featureSchemaId': tool['featureSchemaId'],
-            'name': tool['name'],
-            'options': [*option_schema_ids, *option_names]
+            "tool": tool["type"],
+            "featureSchemaId": tool["featureSchemaId"],
+            "name": tool["name"],
+            "options": [*option_schema_ids, *option_names],
         }
-    elif tool['type'] == 'text':
+    elif tool["type"] == "text":
         return {
-            'tool': tool['type'],
-            'name': tool['name'],
-            'featureSchemaId': tool['featureSchemaId']
+            "tool": tool["type"],
+            "name": tool["name"],
+            "featureSchemaId": tool["featureSchemaId"],
         }
 
 
@@ -474,35 +494,35 @@ def get_mal_schemas(ontology):
 
     valid_feature_schemas_by_schema_id = {}
     valid_feature_schemas_by_name = {}
-    for tool in ontology.normalized['tools']:
+    for tool in ontology.normalized["tools"]:
         classifications = [
             parse_classification(classification_tool)
-            for classification_tool in tool['classifications']
+            for classification_tool in tool["classifications"]
         ]
         classifications_by_schema_id = {
-            v['featureSchemaId']: v for v in classifications
+            v["featureSchemaId"]: v for v in classifications
         }
-        classifications_by_name = {v['name']: v for v in classifications}
-        valid_feature_schemas_by_schema_id[tool['featureSchemaId']] = {
-            'tool': tool['tool'],
-            'classificationsBySchemaId': classifications_by_schema_id,
-            'classificationsByName': classifications_by_name,
-            'name': tool['name']
+        classifications_by_name = {v["name"]: v for v in classifications}
+        valid_feature_schemas_by_schema_id[tool["featureSchemaId"]] = {
+            "tool": tool["tool"],
+            "classificationsBySchemaId": classifications_by_schema_id,
+            "classificationsByName": classifications_by_name,
+            "name": tool["name"],
         }
-        valid_feature_schemas_by_name[tool['name']] = {
-            'tool': tool['tool'],
-            'classificationsBySchemaId': classifications_by_schema_id,
-            'classificationsByName': classifications_by_name,
-            'name': tool['name']
+        valid_feature_schemas_by_name[tool["name"]] = {
+            "tool": tool["tool"],
+            "classificationsBySchemaId": classifications_by_schema_id,
+            "classificationsByName": classifications_by_name,
+            "name": tool["name"],
         }
-    for tool in ontology.normalized['classifications']:
+    for tool in ontology.normalized["classifications"]:
         valid_feature_schemas_by_schema_id[
-            tool['featureSchemaId']] = parse_classification(tool)
-        valid_feature_schemas_by_name[tool['name']] = parse_classification(tool)
+            tool["featureSchemaId"]] = parse_classification(tool)
+        valid_feature_schemas_by_name[tool["name"]] = parse_classification(tool)
     return valid_feature_schemas_by_schema_id, valid_feature_schemas_by_name
 
 
-LabelboxID: str = pydantic.Field(..., min_length=25, max_length=25)
+LabelboxID: str = pydantic.v1.Field(..., min_length=25, max_length=25)
 
 
 class Bbox(BaseModel):
@@ -523,12 +543,12 @@ class FrameLocation(BaseModel):
 
 
 class VideoSupported(BaseModel):
-    #Note that frames are only allowed as top level inferences for video
+    # Note that frames are only allowed as top level inferences for video
     frames: Optional[List[FrameLocation]]
 
 
-#Base class for a special kind of union.
-# Compatible with pydantic. Improves error messages over a traditional union
+# Base class for a special kind of union.
+# Compatible with pydantic.v1. Improves error messages over a traditional union
 class SpecialUnion:
 
     def __new__(cls, **kwargs):
@@ -556,12 +576,12 @@ class SpecialUnion:
     @classmethod
     def build(cls: Any, data: Union[dict, BaseModel]) -> "NDBase":
         """
-            Checks through all objects in the union to see which matches the input data.
-            Args:
-                data  (Union[dict, BaseModel]) : The data for constructing one of the objects in the union
-            raises:
-                KeyError: data does not contain the determinant fields for any of the types supported by this SpecialUnion
-                ValidationError: Error while trying to construct a specific object in the union
+        Checks through all objects in the union to see which matches the input data.
+        Args:
+            data  (Union[dict, BaseModel]) : The data for constructing one of the objects in the union
+        raises:
+            KeyError: data does not contain the determinant fields for any of the types supported by this SpecialUnion
+            ValidationError: Error while trying to construct a specific object in the union
 
         """
         if isinstance(data, BaseModel):
@@ -580,11 +600,11 @@ class SpecialUnion:
                 matched = type_
 
         if matched is not None:
-            #These two have the exact same top level keys
+            # These two have the exact same top level keys
             if matched in [NDRadio, NDText]:
-                if isinstance(data['answer'], dict):
+                if isinstance(data["answer"], dict):
                     matched = NDRadio
-                elif isinstance(data['answer'], str):
+                elif isinstance(data["answer"], str):
                     matched = NDText
                 else:
                     raise TypeError(
@@ -598,10 +618,10 @@ class SpecialUnion:
 
     @classmethod
     def schema(cls):
-        results = {'definitions': {}}
+        results = {"definitions": {}}
         for cl in cls.get_union_types():
             schema = cl.schema()
-            results['definitions'].update(schema.pop('definitions'))
+            results["definitions"].update(schema.pop("definitions"))
             results[cl.__name__] = schema
         return results
 
@@ -616,7 +636,7 @@ class NDFeatureSchema(BaseModel):
 
     @root_validator
     def must_set_one(cls, values):
-        if values['schemaId'] is None and values['name'] is None:
+        if values["schemaId"] is None and values["name"] is None:
             raise ValueError(
                 "Must set either schemaId or name for all feature schemas")
         return values
@@ -636,7 +656,7 @@ class NDBase(NDFeatureSchema):
                 )
 
             if self.ontology_type != valid_feature_schemas_by_name[
-                    self.name]['tool']:
+                    self.name]["tool"]:
                 raise ValueError(
                     f"Name {self.name} does not map to the assigned tool {valid_feature_schemas_by_name[self.name]['tool']}"
                 )
@@ -648,7 +668,7 @@ class NDBase(NDFeatureSchema):
                 )
 
             if self.ontology_type != valid_feature_schemas_by_id[
-                    self.schemaId]['tool']:
+                    self.schemaId]["tool"]:
                 raise ValueError(
                     f"Schema id {self.schemaId} does not map to the assigned tool {valid_feature_schemas_by_id[self.schemaId]['tool']}"
                 )
@@ -659,15 +679,15 @@ class NDBase(NDFeatureSchema):
                                       valid_feature_schemas_by_name)
 
     class Config:
-        #Users shouldn't to add extra data to the payload
-        extra = 'forbid'
+        # Users shouldn't to add extra data to the payload
+        extra = "forbid"
 
         @staticmethod
         def determinants(parent_cls) -> List[str]:
-            #This is a hack for better error messages
+            # This is a hack for better error messages
             return [
                 k for k, v in parent_cls.__fields__.items()
-                if 'determinant' in v.field_info.extra
+                if "determinant" in v.field_info.extra
             ]
 
 
@@ -676,37 +696,36 @@ class NDBase(NDFeatureSchema):
 
 class NDText(NDBase):
     ontology_type: Literal["text"] = "text"
-    answer: str = pydantic.Field(determinant=True)
-    #No feature schema to check
+    answer: str = pydantic.v1.Field(determinant=True)
+    # No feature schema to check
 
 
 class NDChecklist(VideoSupported, NDBase):
     ontology_type: Literal["checklist"] = "checklist"
-    answers: List[NDFeatureSchema] = pydantic.Field(determinant=True)
+    answers: List[NDFeatureSchema] = pydantic.v1.Field(determinant=True)
 
-    @validator('answers', pre=True)
+    @validator("answers", pre=True)
     def validate_answers(cls, value, field):
-        #constr not working with mypy.
+        # constr not working with mypy.
         if not len(value):
             raise ValueError("Checklist answers should not be empty")
         return value
 
     def validate_feature_schemas(self, valid_feature_schemas_by_id,
                                  valid_feature_schemas_by_name):
-        #Test top level feature schema for this tool
+        # Test top level feature schema for this tool
         super(NDChecklist,
               self).validate_feature_schemas(valid_feature_schemas_by_id,
                                              valid_feature_schemas_by_name)
-        #Test the feature schemas provided to the answer field
+        # Test the feature schemas provided to the answer field
         if len(set([answer.name or answer.schemaId for answer in self.answers
                    ])) != len(self.answers):
             raise ValueError(
                 f"Duplicated featureSchema found for checklist {self.uuid}")
         for answer in self.answers:
-            options = valid_feature_schemas_by_name[
-                self.
-                name]['options'] if self.name else valid_feature_schemas_by_id[
-                    self.schemaId]['options']
+            options = (valid_feature_schemas_by_name[self.name]["options"]
+                       if self.name else
+                       valid_feature_schemas_by_id[self.schemaId]["options"])
             if answer.name not in options and answer.schemaId not in options:
                 raise ValueError(
                     f"Feature schema provided to {self.ontology_type} invalid. Expected on of {options}. Found {answer}"
@@ -715,27 +734,27 @@ class NDChecklist(VideoSupported, NDBase):
 
 class NDRadio(VideoSupported, NDBase):
     ontology_type: Literal["radio"] = "radio"
-    answer: NDFeatureSchema = pydantic.Field(determinant=True)
+    answer: NDFeatureSchema = pydantic.v1.Field(determinant=True)
 
     def validate_feature_schemas(self, valid_feature_schemas_by_id,
                                  valid_feature_schemas_by_name):
         super(NDRadio,
               self).validate_feature_schemas(valid_feature_schemas_by_id,
                                              valid_feature_schemas_by_name)
-        options = valid_feature_schemas_by_name[
-            self.name]['options'] if self.name else valid_feature_schemas_by_id[
-                self.schemaId]['options']
+        options = (valid_feature_schemas_by_name[self.name]["options"]
+                   if self.name else
+                   valid_feature_schemas_by_id[self.schemaId]["options"])
         if self.answer.name not in options and self.answer.schemaId not in options:
             raise ValueError(
                 f"Feature schema provided to {self.ontology_type} invalid. Expected on of {options}. Found {self.answer.name or self.answer.schemaId}"
             )
 
 
-#A union with custom construction logic to improve error messages
+# A union with custom construction logic to improve error messages
 class NDClassification(
         SpecialUnion,
-        Type[Union[  # type: ignore
-            NDText, NDRadio, NDChecklist]]):
+        Type[Union[NDText, NDRadio, NDChecklist]]  # type: ignore
+):
     ...
 
 
@@ -745,7 +764,7 @@ class NDClassification(
 class NDBaseTool(NDBase):
     classifications: List[NDClassification] = []
 
-    #This is indepdent of our problem
+    # This is indepdent of our problem
     def validate_feature_schemas(self, valid_feature_schemas_by_id,
                                  valid_feature_schemas_by_name):
         super(NDBaseTool,
@@ -754,34 +773,36 @@ class NDBaseTool(NDBase):
         for classification in self.classifications:
             classification.validate_feature_schemas(
                 valid_feature_schemas_by_name[
-                    self.name]['classificationsBySchemaId']
-                if self.name else valid_feature_schemas_by_id[self.schemaId]
-                ['classificationsBySchemaId'], valid_feature_schemas_by_name[
-                    self.name]['classificationsByName']
+                    self.name]["classificationsBySchemaId"]
                 if self.name else valid_feature_schemas_by_id[
-                    self.schemaId]['classificationsByName'])
+                    self.schemaId]["classificationsBySchemaId"],
+                valid_feature_schemas_by_name[
+                    self.name]["classificationsByName"]
+                if self.name else valid_feature_schemas_by_id[self.schemaId]
+                ["classificationsByName"],
+            )
 
-    @validator('classifications', pre=True)
+    @validator("classifications", pre=True)
     def validate_subclasses(cls, value, field):
-        #Create uuid and datarow id so we don't have to define classification objects twice
-        #This is caused by the fact that we require these ids for top level classifications but not for subclasses
+        # Create uuid and datarow id so we don't have to define classification objects twice
+        # This is caused by the fact that we require these ids for top level classifications but not for subclasses
         results = []
-        dummy_id = 'child'.center(25, '_')
+        dummy_id = "child".center(25, "_")
         for row in value:
             results.append({
-                **row, 'dataRow': {
-                    'id': dummy_id
+                **row, "dataRow": {
+                    "id": dummy_id
                 },
-                'uuid': str(uuid4())
+                "uuid": str(uuid4())
             })
         return results
 
 
 class NDPolygon(NDBaseTool):
     ontology_type: Literal["polygon"] = "polygon"
-    polygon: List[Point] = pydantic.Field(determinant=True)
+    polygon: List[Point] = pydantic.v1.Field(determinant=True)
 
-    @validator('polygon')
+    @validator("polygon")
     def is_geom_valid(cls, v):
         if len(v) < 3:
             raise ValueError(
@@ -791,9 +812,9 @@ class NDPolygon(NDBaseTool):
 
 class NDPolyline(NDBaseTool):
     ontology_type: Literal["line"] = "line"
-    line: List[Point] = pydantic.Field(determinant=True)
+    line: List[Point] = pydantic.v1.Field(determinant=True)
 
-    @validator('line')
+    @validator("line")
     def is_geom_valid(cls, v):
         if len(v) < 2:
             raise ValueError(
@@ -803,14 +824,14 @@ class NDPolyline(NDBaseTool):
 
 class NDRectangle(NDBaseTool):
     ontology_type: Literal["rectangle"] = "rectangle"
-    bbox: Bbox = pydantic.Field(determinant=True)
-    #Could check if points are positive
+    bbox: Bbox = pydantic.v1.Field(determinant=True)
+    # Could check if points are positive
 
 
 class NDPoint(NDBaseTool):
     ontology_type: Literal["point"] = "point"
-    point: Point = pydantic.Field(determinant=True)
-    #Could check if points are positive
+    point: Point = pydantic.v1.Field(determinant=True)
+    # Could check if points are positive
 
 
 class EntityLocation(BaseModel):
@@ -820,9 +841,9 @@ class EntityLocation(BaseModel):
 
 class NDTextEntity(NDBaseTool):
     ontology_type: Literal["named-entity"] = "named-entity"
-    location: EntityLocation = pydantic.Field(determinant=True)
+    location: EntityLocation = pydantic.v1.Field(determinant=True)
 
-    @validator('location')
+    @validator("location")
     def is_valid_location(cls, v):
         if isinstance(v, BaseModel):
             v = v.dict()
@@ -830,9 +851,9 @@ class NDTextEntity(NDBaseTool):
         if len(v) < 2:
             raise ValueError(
                 f"A line must have at least 2 points to be valid. Found {v}")
-        if v['start'] < 0:
+        if v["start"] < 0:
             raise ValueError(f"Text location must be positive. Found {v}")
-        if v['start'] > v['end']:
+        if v["start"] > v["end"]:
             raise ValueError(
                 f"Text start location must be less or equal than end. Found {v}"
             )
@@ -843,7 +864,7 @@ class RLEMaskFeatures(BaseModel):
     counts: List[int]
     size: List[int]
 
-    @validator('counts')
+    @validator("counts")
     def validate_counts(cls, counts):
         if not all([count >= 0 for count in counts]):
             raise ValueError(
@@ -851,7 +872,7 @@ class RLEMaskFeatures(BaseModel):
             )
         return counts
 
-    @validator('size')
+    @validator("size")
     def validate_size(cls, size):
         if len(size) != 2:
             raise ValueError(
@@ -872,9 +893,9 @@ class URIMaskFeatures(BaseModel):
     instanceURI: str
     colorRGB: Union[List[int], Tuple[int, int, int]]
 
-    @validator('colorRGB')
+    @validator("colorRGB")
     def validate_color(cls, colorRGB):
-        #Does the dtype matter? Can it be a float?
+        # Does the dtype matter? Can it be a float?
         if not isinstance(colorRGB, (tuple, list)):
             raise ValueError(
                 f"Received color that is not a list or tuple. Found : {colorRGB}"
@@ -892,10 +913,10 @@ class URIMaskFeatures(BaseModel):
 class NDMask(NDBaseTool):
     ontology_type: Literal["superpixel"] = "superpixel"
     mask: Union[URIMaskFeatures, PNGMaskFeatures,
-                RLEMaskFeatures] = pydantic.Field(determinant=True)
+                RLEMaskFeatures] = pydantic.v1.Field(determinant=True)
 
 
-#A union with custom construction logic to improve error messages
+# A union with custom construction logic to improve error messages
 class NDTool(
         SpecialUnion,
         Type[Union[  # type: ignore
@@ -905,19 +926,18 @@ class NDTool(
             NDRectangle,
             NDPolyline,
             NDPolygon,
-        ]]):
+        ]],
+):
     ...
 
 
-class NDAnnotation(
-        SpecialUnion,
-        Type[Union[  # type: ignore
-            NDTool, NDClassification]]):
+class NDAnnotation(SpecialUnion, Type[Union[NDTool,
+                                            NDClassification]]):  # type: ignore
 
     @classmethod
     def build(cls: Any, data) -> "NDBase":
         if not isinstance(data, dict):
-            raise ValueError('value must be dict')
+            raise ValueError("value must be dict")
         errors = []
         for cl in cls.get_union_types():
             try:
@@ -925,14 +945,14 @@ class NDAnnotation(
             except KeyError as e:
                 errors.append(f"{cl.__name__}: {e}")
 
-        raise ValueError('Unable to construct any annotation.\n{}'.format(
+        raise ValueError("Unable to construct any annotation.\n{}".format(
             "\n".join(errors)))
 
     @classmethod
     def schema(cls):
-        data = {'definitions': {}}
+        data = {"definitions": {}}
         for type_ in cls.get_union_types():
             schema_ = type_.schema()
-            data['definitions'].update(schema_.pop('definitions'))
+            data["definitions"].update(schema_.pop("definitions"))
             data[type_.__name__] = schema_
         return data

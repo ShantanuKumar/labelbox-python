@@ -1,7 +1,7 @@
 from typing import Callable, Optional, Tuple, Union, Dict, List
 
 import numpy as np
-from pydantic.class_validators import validator
+from pydantic.v1.class_validators import validator
 import cv2
 
 from shapely.geometry import MultiPolygon, Polygon
@@ -47,7 +47,7 @@ class Mask(Geometry):
         external_contours = []
         for i in range(len(contours)):
             if hierarchy[0, i, 3] != -1:
-                #determined to be a hole based on contour hierarchy
+                # determined to be a hole based on contour hierarchy
                 holes.append(contours[i])
             else:
                 external_contours.append(contours[i])
@@ -64,12 +64,14 @@ class Mask(Geometry):
 
         return external_polygons.difference(holes).__geo_interface__
 
-    def draw(self,
-             height: Optional[int] = None,
-             width: Optional[int] = None,
-             canvas: Optional[np.ndarray] = None,
-             color: Optional[Union[int, Tuple[int, int, int]]] = None,
-             thickness=None) -> np.ndarray:
+    def draw(
+        self,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        canvas: Optional[np.ndarray] = None,
+        color: Optional[Union[int, Tuple[int, int, int]]] = None,
+        thickness=None,
+    ) -> np.ndarray:
         """Converts the Mask object into a numpy array
 
         Args:
@@ -121,7 +123,7 @@ class Mask(Geometry):
         """
         return self.mask.create_url(signer)
 
-    @validator('color')
+    @validator("color")
     def is_valid_color(cls, color):
         if isinstance(color, (tuple, list)):
             if len(color) == 1:
