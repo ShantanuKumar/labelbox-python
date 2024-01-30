@@ -155,7 +155,8 @@ class RasterData(BaseModel, ABC):
         elif self.arr is not None:
             self.url = signer(self.np_to_bytes(self.arr))
         else:
-            raise ValueError("One of url, im_bytes, file_path, arr must not be None.")
+            raise ValueError(
+                "One of url, im_bytes, file_path, arr must not be None.")
         return self.url
 
     @root_validator()
@@ -178,8 +179,7 @@ class RasterData(BaseModel, ABC):
             elif len(arr.shape) != 3:
                 raise ValueError(
                     "unsupported image format. Must be 3D ([H,W,C])."
-                    f"Use {cls.__name__}.from_2D_arr to construct from 2D"
-                )
+                    f"Use {cls.__name__}.from_2D_arr to construct from 2D")
         return values
 
     def __repr__(self) -> str:
@@ -188,8 +188,7 @@ class RasterData(BaseModel, ABC):
             f"{self.__class__.__name__}(im_bytes={symbol_or_none(self.im_bytes)},"
             f"file_path={self.file_path},"
             f"url={self.url},"
-            f"arr={symbol_or_none(self.arr)})"
-        )
+            f"arr={symbol_or_none(self.arr)})")
 
     class Config:
         # Required for sharing references

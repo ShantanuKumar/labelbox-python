@@ -64,15 +64,17 @@ class Option:
 
     @classmethod
     def from_dict(
-        cls, dictionary: Dict[str, Any]
-    ) -> Dict[Union[str, int], Union[str, int]]:
+            cls,
+            dictionary: Dict[str,
+                             Any]) -> Dict[Union[str, int], Union[str, int]]:
         return cls(
             value=dictionary["value"],
             label=dictionary["label"],
             schema_id=dictionary.get("schemaNodeId", None),
             feature_schema_id=dictionary.get("featureSchemaId", None),
             options=[
-                Classification.from_dict(o) for o in dictionary.get("options", [])
+                Classification.from_dict(o)
+                for o in dictionary.get("options", [])
             ],
         )
 
@@ -89,8 +91,7 @@ class Option:
         if option.name in (o.name for o in self.options):
             raise InconsistentOntologyException(
                 f"Duplicate nested classification '{option.name}' "
-                f"for option '{self.label}'"
-            )
+                f"for option '{self.label}'")
         self.options.append(option)
 
 
@@ -159,8 +160,7 @@ class Classification:
             warnings.warn(
                 "Dropdown classification is deprecated and will be "
                 "removed in a future release. Dropdown will also "
-                "no longer be able to be created in the Editor on 3/31/2022."
-            )
+                "no longer be able to be created in the Editor on 3/31/2022.")
 
         if self.name is None:
             msg = (
@@ -168,8 +168,7 @@ class Classification:
                 "for the classification schema name, which will be used when "
                 "creating annotation payload for Model-Assisted Labeling "
                 "Import and Label Import. “instructions” is no longer "
-                "supported to specify classification schema name."
-            )
+                "supported to specify classification schema name.")
             if self.instructions is not None:
                 self.name = self.instructions
                 warnings.warn(msg)
@@ -195,8 +194,7 @@ class Classification:
     def asdict(self, is_subclass: bool = False) -> Dict[str, Any]:
         if self.class_type in self._REQUIRES_OPTIONS and len(self.options) < 1:
             raise InconsistentOntologyException(
-                f"Classification '{self.name}' requires options."
-            )
+                f"Classification '{self.name}' requires options.")
         classification = {
             "type": self.class_type.value,
             "instructions": self.instructions,
@@ -208,17 +206,15 @@ class Classification:
         }
         if is_subclass:
             return classification
-        classification["scope"] = (
-            self.scope.value if self.scope is not None else self.Scope.GLOBAL.value
-        )
+        classification["scope"] = (self.scope.value if self.scope is not None
+                                   else self.Scope.GLOBAL.value)
         return classification
 
     def add_option(self, option: Option) -> None:
         if option.value in (o.value for o in self.options):
             raise InconsistentOntologyException(
                 f"Duplicate option '{option.value}' "
-                f"for classification '{self.name}'."
-            )
+                f"for classification '{self.name}'.")
         self.options.append(option)
 
 
@@ -280,7 +276,8 @@ class Tool:
             required=dictionary.get("required", False),
             tool=cls.Type(dictionary["tool"]),
             classifications=[
-                Classification.from_dict(c) for c in dictionary["classifications"]
+                Classification.from_dict(c)
+                for c in dictionary["classifications"]
             ],
             color=dictionary["color"],
         )
@@ -302,8 +299,7 @@ class Tool:
         if classification.name in (c.name for c in self.classifications):
             raise InconsistentOntologyException(
                 f"Duplicate nested classification '{classification.name}' "
-                f"for tool '{self.name}'"
-            )
+                f"for tool '{self.name}'")
         self.classifications.append(classification)
 
 
@@ -341,7 +337,9 @@ class Ontology(DbObject):
     def tools(self) -> List[Tool]:
         """Get list of tools (AKA objects) in an Ontology."""
         if self._tools is None:
-            self._tools = [Tool.from_dict(tool) for tool in self.normalized["tools"]]
+            self._tools = [
+                Tool.from_dict(tool) for tool in self.normalized["tools"]
+            ]
         return self._tools
 
     def classifications(self) -> List[Classification]:
@@ -388,7 +386,8 @@ class OntologyBuilder:
         return cls(
             tools=[Tool.from_dict(t) for t in dictionary["tools"]],
             classifications=[
-                Classification.from_dict(c) for c in dictionary["classifications"]
+                Classification.from_dict(c)
+                for c in dictionary["classifications"]
             ],
         )
 
@@ -404,7 +403,8 @@ class OntologyBuilder:
 
         for index in range(num_tools):
             hsv_color = (index * 1 / num_tools, 1, 1)
-            rgb_color = tuple(int(255 * x) for x in colorsys.hsv_to_rgb(*hsv_color))
+            rgb_color = tuple(
+                int(255 * x) for x in colorsys.hsv_to_rgb(*hsv_color))
             if self.tools[index].color is None:
                 self.tools[index].color = "#%02x%02x%02x" % rgb_color
 
@@ -419,12 +419,12 @@ class OntologyBuilder:
 
     def add_tool(self, tool: Tool) -> None:
         if tool.name in (t.name for t in self.tools):
-            raise InconsistentOntologyException(f"Duplicate tool name '{tool.name}'. ")
+            raise InconsistentOntologyException(
+                f"Duplicate tool name '{tool.name}'. ")
         self.tools.append(tool)
 
     def add_classification(self, classification: Classification) -> None:
         if classification.name in (c.name for c in self.classifications):
             raise InconsistentOntologyException(
-                f"Duplicate classification name '{classification.name}'. "
-            )
+                f"Duplicate classification name '{classification.name}'. ")
         self.classifications.append(classification)

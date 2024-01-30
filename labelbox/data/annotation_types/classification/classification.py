@@ -94,10 +94,8 @@ class Dropdown(_TempName):
 
     def __init__(self, **data: Any):
         super().__init__(**data)
-        warnings.warn(
-            "Dropdown classification is deprecated and will be "
-            "removed in a future release"
-        )
+        warnings.warn("Dropdown classification is deprecated and will be "
+                      "removed in a future release")
 
 
 class ClassificationAnnotation(BaseAnnotation, ConfidenceMixin):

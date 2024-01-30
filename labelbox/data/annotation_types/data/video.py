@@ -46,7 +46,9 @@ class VideoData(BaseData):
         return self.frame_generator()
 
     def frame_generator(
-        self, cache_frames=False, download_dir="/tmp"
+            self,
+            cache_frames=False,
+            download_dir="/tmp"
     ) -> Generator[Tuple[int, np.ndarray], None, None]:
         """
         A generator for accessing individual frames in a video.
@@ -124,9 +126,10 @@ class VideoData(BaseData):
             raise ValueError("One of url, file_path, frames must not be None.")
         return self.url
 
-    def frames_to_video(
-        self, frames: Dict[int, np.ndarray], fps=20, save_dir="/tmp"
-    ) -> str:
+    def frames_to_video(self,
+                        frames: Dict[int, np.ndarray],
+                        fps=20,
+                        save_dir="/tmp") -> str:
         """
         Compresses the data by converting a set of individual frames to a single video.
 
@@ -136,9 +139,9 @@ class VideoData(BaseData):
         for key in frames.keys():
             frame = frames[key]
             if out is None:
-                out = cv2.VideoWriter(
-                    file_path, cv2.VideoWriter_fourcc(*"MP4V"), fps, frame.shape[:2]
-                )
+                out = cv2.VideoWriter(file_path,
+                                      cv2.VideoWriter_fourcc(*"MP4V"), fps,
+                                      frame.shape[:2])
             out.write(frame)
         if out is None:
             return
@@ -160,11 +163,9 @@ class VideoData(BaseData):
         return values
 
     def __repr__(self) -> str:
-        return (
-            f"VideoData(file_path={self.file_path},"
-            f"frames={'...' if self.frames is not None else None},"
-            f"url={self.url})"
-        )
+        return (f"VideoData(file_path={self.file_path},"
+                f"frames={'...' if self.frames is not None else None},"
+                f"url={self.url})")
 
     class Config:
         # Required for discriminating between data types

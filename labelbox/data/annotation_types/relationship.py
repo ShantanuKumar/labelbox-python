@@ -4,6 +4,7 @@ from labelbox.data.annotation_types.annotation import BaseAnnotation, ObjectAnno
 
 
 class Relationship(BaseModel):
+
     class Type(Enum):
         UNIDIRECTIONAL = "unidirectional"
         BIDIRECTIONAL = "bidirectional"

@@ -37,9 +37,8 @@ class NDRelationship(NDAnnotation):
         )
 
     @classmethod
-    def from_common(
-        cls, annotation: RelationshipAnnotation, data: Union[ImageData, TextData]
-    ) -> "NDRelationship":
+    def from_common(cls, annotation: RelationshipAnnotation,
+                    data: Union[ImageData, TextData]) -> "NDRelationship":
         relationship = annotation.value
         return cls(
             uuid=str(annotation._uuid),

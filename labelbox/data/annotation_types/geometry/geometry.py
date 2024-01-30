@@ -17,21 +17,21 @@ class Geometry(BaseModel, ABC):
     def shapely(
         self,
     ) -> Union[
-        geom.Point,
-        geom.LineString,
-        geom.Polygon,
-        geom.MultiPoint,
-        geom.MultiLineString,
-        geom.MultiPolygon,
+            geom.Point,
+            geom.LineString,
+            geom.Polygon,
+            geom.MultiPoint,
+            geom.MultiLineString,
+            geom.MultiPolygon,
     ]:
         return geom.shape(self.geometry)
 
-    def get_or_create_canvas(
-        self, height: Optional[int], width: Optional[int], canvas: Optional[np.ndarray]
-    ) -> np.ndarray:
+    def get_or_create_canvas(self, height: Optional[int], width: Optional[int],
+                             canvas: Optional[np.ndarray]) -> np.ndarray:
         if canvas is None:
             if height is None or width is None:
-                raise ValueError("Must either provide canvas or height and width")
+                raise ValueError(
+                    "Must either provide canvas or height and width")
             canvas = np.zeros((height, width, 3), dtype=np.uint8)
         canvas = np.ascontiguousarray(canvas)
         return canvas

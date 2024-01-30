@@ -15,18 +15,22 @@ from ...annotation_types.types import Cuid
 
 
 class LBV1ClassificationAnswer(LBV1Feature):
+
     def to_common(self) -> ClassificationAnswer:
         return ClassificationAnswer(
             feature_schema_id=self.schema_id,
             name=self.title,
             keyframe=self.keyframe,
-            extra={"feature_id": self.feature_id, "value": self.value},
+            extra={
+                "feature_id": self.feature_id,
+                "value": self.value
+            },
         )
 
     @classmethod
     def from_common(
-        cls, answer: ClassificationAnnotation
-    ) -> "LBV1ClassificationAnswer":
+            cls,
+            answer: ClassificationAnnotation) -> "LBV1ClassificationAnswer":
         return cls(
             schema_id=answer.feature_schema_id,
             title=answer.name,
@@ -43,7 +47,8 @@ class LBV1Radio(LBV1Feature):
         return Radio(answer=self.answer.to_common())
 
     @classmethod
-    def from_common(cls, radio: Radio, feature_schema_id: Cuid, **extra) -> "LBV1Radio":
+    def from_common(cls, radio: Radio, feature_schema_id: Cuid,
+                    **extra) -> "LBV1Radio":
         return cls(
             schema_id=feature_schema_id,
             answer=LBV1ClassificationAnswer.from_common(radio.answer),
@@ -58,9 +63,8 @@ class LBV1Checklist(LBV1Feature):
         return Checklist(answer=[answer.to_common() for answer in self.answers])
 
     @classmethod
-    def from_common(
-        cls, checklist: Checklist, feature_schema_id: Cuid, **extra
-    ) -> "LBV1Checklist":
+    def from_common(cls, checklist: Checklist, feature_schema_id: Cuid,
+                    **extra) -> "LBV1Checklist":
         return cls(
             schema_id=feature_schema_id,
             answers=[
@@ -78,9 +82,8 @@ class LBV1Dropdown(LBV1Feature):
         return Dropdown(answer=[answer.to_common() for answer in self.answer])
 
     @classmethod
-    def from_common(
-        cls, dropdown: Dropdown, feature_schema_id: Cuid, **extra
-    ) -> "LBV1Dropdown":
+    def from_common(cls, dropdown: Dropdown, feature_schema_id: Cuid,
+                    **extra) -> "LBV1Dropdown":
         return cls(
             schema_id=feature_schema_id,
             answer=[
@@ -98,12 +101,14 @@ class LBV1Text(LBV1Feature):
         return Text(answer=self.answer)
 
     @classmethod
-    def from_common(cls, text: Text, feature_schema_id: Cuid, **extra) -> "LBV1Text":
+    def from_common(cls, text: Text, feature_schema_id: Cuid,
+                    **extra) -> "LBV1Text":
         return cls(schema_id=feature_schema_id, answer=text.answer, **extra)
 
 
 class LBV1Classifications(BaseModel):
-    classifications: List[Union[LBV1Text, LBV1Radio, LBV1Dropdown, LBV1Checklist]] = []
+    classifications: List[Union[LBV1Text, LBV1Radio, LBV1Dropdown,
+                                LBV1Checklist]] = []
 
     def to_common(self) -> List[ClassificationAnnotation]:
         classifications = [
@@ -115,14 +120,13 @@ class LBV1Classifications(BaseModel):
                     "value": classification.value,
                     "feature_id": classification.feature_id,
                 },
-            )
-            for classification in self.classifications
+            ) for classification in self.classifications
         ]
         return classifications
 
     @classmethod
     def from_common(
-        cls, annotations: List[ClassificationAnnotation]
+            cls, annotations: List[ClassificationAnnotation]
     ) -> "LBV1Classifications":
         classifications = []
         for annotation in annotations:
@@ -133,8 +137,7 @@ class LBV1Classifications(BaseModel):
                         annotation.value,
                         annotation.feature_schema_id,
                         **annotation.extra,
-                    )
-                )
+                    ))
             else:
                 raise TypeError(f"Unexpected type {type(annotation.value)}")
         return cls(classifications=classifications)

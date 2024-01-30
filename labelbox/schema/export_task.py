@@ -18,7 +18,7 @@ from typing import (
 )
 
 import requests
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from labelbox.schema.task import Task
 from labelbox.utils import _CamelCaseMixin

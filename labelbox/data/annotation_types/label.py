@@ -69,16 +69,14 @@ class Label(BaseModel):
 
     uid: Optional[Cuid] = None
     data: DataType
-    annotations: List[
-        Union[
-            ClassificationAnnotation,
-            ObjectAnnotation,
-            VideoMaskAnnotation,
-            ScalarMetric,
-            ConfusionMatrixMetric,
-            RelationshipAnnotation,
-        ]
-    ] = []
+    annotations: List[Union[
+        ClassificationAnnotation,
+        ObjectAnnotation,
+        VideoMaskAnnotation,
+        ScalarMetric,
+        ConfusionMatrixMetric,
+        RelationshipAnnotation,
+    ]] = []
     extra: Dict[str, Any] = {}
 
     def object_annotations(self) -> List[ObjectAnnotation]:
@@ -89,7 +87,8 @@ class Label(BaseModel):
 
     def _get_annotations_by_type(self, annotation_type):
         return [
-            annot for annot in self.annotations if isinstance(annot, annotation_type)
+            annot for annot in self.annotations
+            if isinstance(annot, annotation_type)
         ]
 
     def frame_annotations(
@@ -98,8 +97,8 @@ class Label(BaseModel):
         frame_dict = defaultdict(list)
         for annotation in self.annotations:
             if isinstance(
-                annotation, (VideoObjectAnnotation, VideoClassificationAnnotation)
-            ):
+                    annotation,
+                (VideoObjectAnnotation, VideoClassificationAnnotation)):
                 frame_dict[annotation.frame].append(annotation)
         return frame_dict
 
@@ -141,9 +140,8 @@ class Label(BaseModel):
             mask.create_url(signer)
         return self
 
-    def create_data_row(
-        self, dataset: "labelbox.Dataset", signer: Callable[[bytes], str]
-    ) -> "Label":
+    def create_data_row(self, dataset: "labelbox.Dataset",
+                        signer: Callable[[bytes], str]) -> "Label":
         """
         Creates a data row and adds to the given dataset.
         Updates the label's data object to have the same external_id and uid as the data row.
@@ -165,8 +163,7 @@ class Label(BaseModel):
         return self
 
     def assign_feature_schema_ids(
-        self, ontology_builder: ontology.OntologyBuilder
-    ) -> "Label":
+            self, ontology_builder: ontology.OntologyBuilder) -> "Label":
         """
         Adds schema ids to all FeatureSchema objects in the Labels.
 
@@ -177,12 +174,11 @@ class Label(BaseModel):
 
         Note: You can now import annotations using names directly without having to lookup schema_ids
         """
-        warnings.warn(
-            "This method is deprecated and will be "
-            "removed in a future release. Feature schema ids"
-            " are no longer required for importing."
-        )
-        tool_lookup, classification_lookup = get_feature_schema_lookup(ontology_builder)
+        warnings.warn("This method is deprecated and will be "
+                      "removed in a future release. Feature schema ids"
+                      " are no longer required for importing.")
+        tool_lookup, classification_lookup = get_feature_schema_lookup(
+            ontology_builder)
         for annotation in self.annotations:
             if isinstance(annotation, ClassificationAnnotation):
                 self._assign_or_raise(annotation, classification_lookup)
@@ -194,8 +190,7 @@ class Label(BaseModel):
                     self._assign_option(classification, classification_lookup)
             else:
                 raise TypeError(
-                    f"Unexpected type found for annotation. {type(annotation)}"
-                )
+                    f"Unexpected type found for annotation. {type(annotation)}")
         return self
 
     def _assign_or_raise(self, annotation, lookup: Dict[str, str]) -> None:
@@ -204,15 +199,12 @@ class Label(BaseModel):
 
         feature_schema_id = lookup.get(annotation.name)
         if feature_schema_id is None:
-            raise ValueError(
-                f"No tool matches name {annotation.name}. "
-                f"Must be one of {list(lookup.keys())}."
-            )
+            raise ValueError(f"No tool matches name {annotation.name}. "
+                             f"Must be one of {list(lookup.keys())}.")
         annotation.feature_schema_id = feature_schema_id
 
-    def _assign_option(
-        self, classification: ClassificationAnnotation, lookup: Dict[str, str]
-    ) -> None:
+    def _assign_option(self, classification: ClassificationAnnotation,
+                       lookup: Dict[str, str]) -> None:
         if isinstance(classification.value.answer, str):
             pass
         elif isinstance(classification.value.answer, ClassificationAnswer):
@@ -227,12 +219,10 @@ class Label(BaseModel):
 
     @validator("annotations", pre=True)
     def validate_union(cls, value):
-        supported = tuple(
-            [
-                field.type_
-                for field in cls.__fields__["annotations"].sub_fields[0].sub_fields
-            ]
-        )
+        supported = tuple([
+            field.type_
+            for field in cls.__fields__["annotations"].sub_fields[0].sub_fields
+        ])
         if not isinstance(value, list):
             raise TypeError(f"Annotations must be a list. Found {type(value)}")
 

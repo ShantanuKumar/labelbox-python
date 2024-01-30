@@ -52,6 +52,7 @@ def is_valid_uri(uri):
 
 
 class _CamelCaseMixin(BaseModel):
+
     class Config:
         allow_population_by_field_name = True
         alias_generator = camel_case

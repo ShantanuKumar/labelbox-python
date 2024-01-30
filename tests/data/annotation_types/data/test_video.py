@@ -11,7 +11,10 @@ def test_validate_schema():
 
 
 def test_frames():
-    data = {x: (np.random.random((32, 32, 3)) * 255).astype(np.uint8) for x in range(5)}
+    data = {
+        x: (np.random.random((32, 32, 3)) * 255).astype(np.uint8)
+        for x in range(5)
+    }
     video_data = VideoData(frames=data)
     for idx, frame in video_data.frame_generator():
         assert idx in data
@@ -51,7 +54,10 @@ def test_file_url():
 def test_ref():
     external_id = "external_id"
     uid = "uid"
-    data = {x: (np.random.random((32, 32, 3)) * 255).astype(np.uint8) for x in range(5)}
+    data = {
+        x: (np.random.random((32, 32, 3)) * 255).astype(np.uint8)
+        for x in range(5)
+    }
     metadata = []
     media_attributes = {}
     data = VideoData(

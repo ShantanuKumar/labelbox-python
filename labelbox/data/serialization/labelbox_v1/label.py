@@ -16,21 +16,22 @@ from .objects import LBV1Objects, LBV1TextEntity
 
 
 class LBV1LabelAnnotations(LBV1Classifications, LBV1Objects):
-    def to_common(self) -> List[Union[ObjectAnnotation, ClassificationAnnotation]]:
+
+    def to_common(
+            self) -> List[Union[ObjectAnnotation, ClassificationAnnotation]]:
         classifications = LBV1Classifications.to_common(self)
         objects = LBV1Objects.to_common(self)
         return [*objects, *classifications]
 
     @classmethod
     def from_common(
-        cls, annotations: List[Union[ClassificationAnnotation, ObjectAnnotation]]
+        cls, annotations: List[Union[ClassificationAnnotation,
+                                     ObjectAnnotation]]
     ) -> "LBV1LabelAnnotations":
         objects = LBV1Objects.from_common(
-            [x for x in annotations if isinstance(x, ObjectAnnotation)]
-        )
+            [x for x in annotations if isinstance(x, ObjectAnnotation)])
         classifications = LBV1Classifications.from_common(
-            [x for x in annotations if isinstance(x, ClassificationAnnotation)]
-        )
+            [x for x in annotations if isinstance(x, ClassificationAnnotation)])
         return cls(**objects.dict(), **classifications.dict())
 
 
@@ -46,8 +47,7 @@ class LBV1LabelAnnotationsVideo(LBV1LabelAnnotations):
                 frame=self.frame_number,
                 name=classification.title,
                 feature_schema_id=classification.schema_id,
-            )
-            for classification in self.classifications
+            ) for classification in self.classifications
         ]
 
         objects = [
@@ -64,8 +64,7 @@ class LBV1LabelAnnotationsVideo(LBV1LabelAnnotations):
                             "title": cls.title,
                             "value": cls.value,
                         },
-                    )
-                    for cls in obj.classifications
+                    ) for cls in obj.classifications
                 ],
                 name=obj.title,
                 frame=self.frame_number,
@@ -77,15 +76,15 @@ class LBV1LabelAnnotationsVideo(LBV1LabelAnnotations):
                     "color": obj.color,
                     "feature_id": obj.feature_id,
                 },
-            )
-            for obj in self.objects
+            ) for obj in self.objects
         ]
         return [*classifications, *objects]
 
     @classmethod
     def from_common(
         cls,
-        annotations: List[Union[VideoObjectAnnotation, VideoClassificationAnnotation]],
+        annotations: List[Union[VideoObjectAnnotation,
+                                VideoClassificationAnnotation]],
     ) -> "LBV1LabelAnnotationsVideo":
         by_frames = {}
         for annotation in annotations:
@@ -96,14 +95,14 @@ class LBV1LabelAnnotationsVideo(LBV1LabelAnnotations):
 
         result = []
         for frame in by_frames:
-            converted = LBV1LabelAnnotations.from_common(annotations=by_frames[frame])
+            converted = LBV1LabelAnnotations.from_common(
+                annotations=by_frames[frame])
             result.append(
                 LBV1LabelAnnotationsVideo(
                     frame_number=frame,
                     objects=converted.objects,
                     classifications=converted.classifications,
-                )
-            )
+                ))
 
         return result
 
@@ -126,19 +125,16 @@ Extra = lambda name: Field(None, alias=name, extra_field=True)
 
 
 class LBV1Label(BaseModel):
-    label: Union[LBV1LabelAnnotations, List[LBV1LabelAnnotationsVideo]] = Field(
-        ..., alias="Label"
-    )
+    label: Union[LBV1LabelAnnotations,
+                 List[LBV1LabelAnnotationsVideo]] = Field(..., alias="Label")
     data_row_id: str = Field(..., alias="DataRow ID")
     row_data: str = Field(None, alias="Labeled Data")
     id: Optional[str] = Field(None, alias="ID")
     external_id: Optional[str] = Field(None, alias="External ID")
     data_row_media_attributes: Optional[Dict[str, Any]] = Field(
-        {}, alias="Media Attributes"
-    )
+        {}, alias="Media Attributes")
     data_row_metadata: Optional[List[Dict[str, Any]]] = Field(
-        [], alias="DataRow Metadata"
-    )
+        [], alias="DataRow Metadata")
 
     created_by: Optional[str] = Extra("Created By")
     project_name: Optional[str] = Extra("Project Name")
@@ -178,9 +174,8 @@ class LBV1Label(BaseModel):
 
     @classmethod
     def from_common(cls, label: Label):
-        if isinstance(
-            label.annotations[0], (VideoObjectAnnotation, VideoClassificationAnnotation)
-        ):
+        if isinstance(label.annotations[0],
+                      (VideoObjectAnnotation, VideoClassificationAnnotation)):
             label_ = LBV1LabelAnnotationsVideo.from_common(label.annotations)
         else:
             label_ = LBV1LabelAnnotations.from_common(label.annotations)
@@ -196,8 +191,7 @@ class LBV1Label(BaseModel):
         )
 
     def _data_row_to_common(
-        self,
-    ) -> Union[ImageData, TextData, VideoData, TiledImageData]:
+        self,) -> Union[ImageData, TextData, VideoData, TiledImageData]:
         # Use data row information to construct the appropriate annotation type
         data_row_info = {
             "url" if self._is_url() else "text": self.row_data,
@@ -208,12 +202,15 @@ class LBV1Label(BaseModel):
         }
 
         self.media_type = self.media_type or self._infer_media_type()
-        media_mapping = {"text": TextData, "image": ImageData, "video": VideoData}
+        media_mapping = {
+            "text": TextData,
+            "image": ImageData,
+            "video": VideoData
+        }
         if self.media_type not in media_mapping:
             raise ValueError(
                 f"Annotation types are only supported for {list(media_mapping)} media types."
-                f" Found {self.media_type}."
-            )
+                f" Found {self.media_type}.")
         return media_mapping[self.media_type](**data_row_info)
 
     def _infer_media_type(self) -> str:
@@ -227,9 +224,8 @@ class LBV1Label(BaseModel):
         else:
             if self._row_contains((".jpg", ".png", ".jpeg")) and self._is_url():
                 return "image"
-            elif (
-                self._row_contains((".txt", ".text", ".html")) and self._is_url()
-            ) or not self._is_url():
+            elif (self._row_contains((".txt", ".text", ".html")) and
+                  self._is_url()) or not self._is_url():
                 return "text"
             else:
                 #  This condition will occur when a data row url does not contain a file extension
@@ -245,26 +241,19 @@ class LBV1Label(BaseModel):
         return len(self.label.objects) > 0
 
     def _has_text_annotations(self) -> bool:
-        return (
-            len(
-                [
-                    annotation
-                    for annotation in self.label.objects
-                    if isinstance(annotation, LBV1TextEntity)
-                ]
-            )
-            > 0
-        )
+        return (len([
+            annotation for annotation in self.label.objects
+            if isinstance(annotation, LBV1TextEntity)
+        ]) > 0)
 
     def _row_contains(self, substrs) -> bool:
         lower_row_data = self.row_data.lower()
         return any([substr in lower_row_data for substr in substrs])
 
     def _is_url(self) -> bool:
-        return (
-            self.row_data.startswith(("http://", "https://", "gs://", "s3://"))
-            or "tileLayerUrl" in self.row_data
-        )
+        return (self.row_data.startswith(
+            ("http://", "https://", "gs://", "s3://")) or
+                "tileLayerUrl" in self.row_data)
 
     class Config:
         allow_population_by_field_name = True

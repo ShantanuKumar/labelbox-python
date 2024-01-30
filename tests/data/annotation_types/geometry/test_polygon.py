@@ -19,7 +19,8 @@ def test_polygon():
     expected = {"coordinates": [points + [points[0]]], "type": "Polygon"}
     polygon = Polygon(points=[Point(x=x, y=y) for x, y in points])
     assert polygon.geometry == expected
-    expected["coordinates"] = tuple([tuple([tuple(x) for x in points + [points[0]]])])
+    expected["coordinates"] = tuple(
+        [tuple([tuple(x) for x in points + [points[0]]])])
     assert polygon.shapely.__geo_interface__ == expected
 
     raster = polygon.draw(10, 10)

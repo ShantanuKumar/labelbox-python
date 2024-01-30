@@ -24,7 +24,11 @@ def test_annotation():
         value=line,
         name=name,
     )
-    assert annotation.value.points[0].dict() == {"extra": {}, "x": 1.0, "y": 2.0}
+    assert annotation.value.points[0].dict() == {
+        "extra": {},
+        "x": 1.0,
+        "y": 2.0
+    }
     assert annotation.name == name
 
     # Check ner

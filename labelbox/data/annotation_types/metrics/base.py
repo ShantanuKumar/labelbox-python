@@ -22,7 +22,8 @@ class BaseMetric(BaseModel, ABC):
     @validator("value")
     def validate_value(cls, value):
         if isinstance(value, Dict):
-            if not (MIN_CONFIDENCE_SCORES <= len(value) <= MAX_CONFIDENCE_SCORES):
+            if not (MIN_CONFIDENCE_SCORES <= len(value) <=
+                    MAX_CONFIDENCE_SCORES):
                 raise ValidationError(
                     [
                         ErrorWrapper(

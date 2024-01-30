@@ -113,9 +113,8 @@ class _DeleteBatchDataRowMetadata(_CamelCaseMixin):
         return res
 
 
-_BatchInputs = Union[
-    List[_UpsertBatchDataRowMetadata], List[_DeleteBatchDataRowMetadata]
-]
+_BatchInputs = Union[List[_UpsertBatchDataRowMetadata],
+                     List[_DeleteBatchDataRowMetadata]]
 _BatchFunction = Callable[[_BatchInputs], List[DataRowMetadataBatchResponse]]
 
 
@@ -160,24 +159,24 @@ class DataRowMetadataOntology:
             f for f in self.fields if f.reserved
         ]
         self.reserved_by_id = self._make_id_index(self.reserved_fields)
-        self.reserved_by_name: Dict[
-            str, Union[DataRowMetadataSchema, Dict[str, DataRowMetadataSchema]]
-        ] = self._make_name_index(self.reserved_fields)
+        self.reserved_by_name: Dict[str, Union[DataRowMetadataSchema, Dict[
+            str, DataRowMetadataSchema]]] = self._make_name_index(
+                self.reserved_fields)
         self.reserved_by_name_normalized: Dict[
-            str, DataRowMetadataSchema
-        ] = self._make_normalized_name_index(self.reserved_fields)
+            str, DataRowMetadataSchema] = self._make_normalized_name_index(
+                self.reserved_fields)
 
         # custom fields
         self.custom_fields: List[DataRowMetadataSchema] = [
             f for f in self.fields if not f.reserved
         ]
         self.custom_by_id = self._make_id_index(self.custom_fields)
-        self.custom_by_name: Dict[
-            str, Union[DataRowMetadataSchema, Dict[str, DataRowMetadataSchema]]
-        ] = self._make_name_index(self.custom_fields)
+        self.custom_by_name: Dict[str, Union[DataRowMetadataSchema, Dict[
+            str,
+            DataRowMetadataSchema]]] = self._make_name_index(self.custom_fields)
         self.custom_by_name_normalized: Dict[
-            str, DataRowMetadataSchema
-        ] = self._make_normalized_name_index(self.custom_fields)
+            str, DataRowMetadataSchema] = self._make_normalized_name_index(
+                self.custom_fields)
 
     @staticmethod
     def _lookup_in_index_by_name(reserved_index, custom_index, name):
@@ -205,23 +204,23 @@ class DataRowMetadataOntology:
         Raises:
             KeyError: When provided name is not presented in neither reserved nor custom metadata list
         """
-        return self._lookup_in_index_by_name(
-            self.reserved_by_name, self.custom_by_name, name
-        )
+        return self._lookup_in_index_by_name(self.reserved_by_name,
+                                             self.custom_by_name, name)
 
     def _get_by_name_normalized(self, name: str) -> DataRowMetadataSchema:
         """Get metadata by name. For options, it provides the option schema instead of list of
         options
         """
         # using `normalized` indices to find options by name as well
-        return self._lookup_in_index_by_name(
-            self.reserved_by_name_normalized, self.custom_by_name_normalized, name
-        )
+        return self._lookup_in_index_by_name(self.reserved_by_name_normalized,
+                                             self.custom_by_name_normalized,
+                                             name)
 
     @staticmethod
     def _make_name_index(
         fields: List[DataRowMetadataSchema],
-    ) -> Dict[str, Union[DataRowMetadataSchema, Dict[str, DataRowMetadataSchema]]]:
+    ) -> Dict[str, Union[DataRowMetadataSchema, Dict[str,
+                                                     DataRowMetadataSchema]]]:
         index = {}
         for f in fields:
             if f.options:
@@ -282,8 +281,12 @@ class DataRowMetadataOntology:
                 for option in schema["options"]:
                     option["uid"] = option["id"]
                     options.append(
-                        DataRowMetadataSchema(**{**option, **{"parent": schema["uid"]}})
-                    )
+                        DataRowMetadataSchema(**{
+                            **option,
+                            **{
+                                "parent": schema["uid"]
+                            }
+                        }))
             schema["options"] = options
             fields.append(DataRowMetadataSchema(**schema))
 
@@ -296,9 +299,10 @@ class DataRowMetadataOntology:
         self._raw_ontology = self._get_ontology()
         self._build_ontology()
 
-    def create_schema(
-        self, name: str, kind: DataRowMetadataKind, options: List[str] = None
-    ) -> DataRowMetadataSchema:
+    def create_schema(self,
+                      name: str,
+                      kind: DataRowMetadataKind,
+                      options: List[str] = None) -> DataRowMetadataSchema:
         """Create metadata schema
 
         >>> mdo.create_schema(name, kind, options)
@@ -317,7 +321,8 @@ class DataRowMetadataOntology:
         if not isinstance(kind, DataRowMetadataKind):
             raise ValueError(f"kind '{kind}' must be a `DataRowMetadataKind`")
 
-        upsert_schema = _UpsertCustomMetadataSchemaInput(name=name, kind=kind.value)
+        upsert_schema = _UpsertCustomMetadataSchemaInput(name=name,
+                                                         kind=kind.value)
         if options:
             if kind != DataRowMetadataKind.enum:
                 raise ValueError(
@@ -325,8 +330,7 @@ class DataRowMetadataOntology:
                 )
             upsert_enum_options = [
                 _UpsertCustomMetadataSchemaEnumOptionInput(
-                    name=o, kind=DataRowMetadataKind.option.value
-                )
+                    name=o, kind=DataRowMetadataKind.option.value)
                 for o in options
             ]
             upsert_schema.options = upsert_enum_options
@@ -349,23 +353,23 @@ class DataRowMetadataOntology:
             KeyError: When provided name is not a valid custom metadata
         """
         schema = self._validate_custom_schema_by_name(name)
-        upsert_schema = _UpsertCustomMetadataSchemaInput(
-            id=schema.uid, name=new_name, kind=schema.kind.value
-        )
+        upsert_schema = _UpsertCustomMetadataSchemaInput(id=schema.uid,
+                                                         name=new_name,
+                                                         kind=schema.kind.value)
         if schema.options:
             upsert_enum_options = [
                 _UpsertCustomMetadataSchemaEnumOptionInput(
-                    id=o.uid, name=o.name, kind=DataRowMetadataKind.option.value
-                )
+                    id=o.uid,
+                    name=o.name,
+                    kind=DataRowMetadataKind.option.value)
                 for o in schema.options
             ]
             upsert_schema.options = upsert_enum_options
 
         return self._upsert_schema(upsert_schema)
 
-    def update_enum_option(
-        self, name: str, option: str, new_option: str
-    ) -> DataRowMetadataSchema:
+    def update_enum_option(self, name: str, option: str,
+                           new_option: str) -> DataRowMetadataSchema:
         """Update Enum metadata schema option
 
         >>> mdo.update_enum_option(name, option, new_option)
@@ -392,14 +396,13 @@ class DataRowMetadataOntology:
             raise ValueError(
                 f"Enum option '{option}' is not a valid option for Enum '{name}', valid options are: {valid_options}"
             )
-        upsert_schema = _UpsertCustomMetadataSchemaInput(
-            id=schema.uid, name=schema.name, kind=schema.kind.value
-        )
+        upsert_schema = _UpsertCustomMetadataSchemaInput(id=schema.uid,
+                                                         name=schema.name,
+                                                         kind=schema.kind.value)
         upsert_enum_options = []
         for o in schema.options:
             enum_option = _UpsertCustomMetadataSchemaEnumOptionInput(
-                id=o.uid, name=o.name, kind=o.kind.value
-            )
+                id=o.uid, name=o.name, kind=o.kind.value)
             if enum_option.name == option:
                 enum_option.name = new_option
             upsert_enum_options.append(enum_option)
@@ -427,16 +430,17 @@ class DataRowMetadataOntology:
                     success
                 }
             }"""
-        res = self._client.execute(query, {"where": {"id": schema.uid}})[
-            "deleteCustomMetadataSchema"
-        ]
+        res = self._client.execute(query, {"where": {
+            "id": schema.uid
+        }})["deleteCustomMetadataSchema"]
         self.refresh_ontology()
 
         return res["success"]
 
     def parse_metadata(
-        self, unparsed: List[Dict[str, List[Union[str, Dict]]]]
-    ) -> List[DataRowMetadata]:
+        self, unparsed: List[Dict[str,
+                                  List[Union[str,
+                                             Dict]]]]) -> List[DataRowMetadata]:
         """Parse metadata responses
 
         >>> mdo.parse_metadata([metadata])
@@ -460,13 +464,12 @@ class DataRowMetadataOntology:
                     data_row_id=dr["dataRowId"],
                     global_key=dr["globalKey"],
                     fields=fields,
-                )
-            )
+                ))
         return parsed
 
     def parse_metadata_fields(
-        self, unparsed: List[Dict[str, Dict]]
-    ) -> List[DataRowMetadataField]:
+            self, unparsed: List[Dict[str,
+                                      Dict]]) -> List[DataRowMetadataField]:
         """Parse metadata fields as list of `DataRowMetadataField`
 
         >>> mdo.parse_metadata_fields([metadata_fields])
@@ -487,27 +490,28 @@ class DataRowMetadataOntology:
                 self.refresh_ontology()
                 if f["schemaId"] not in self.fields_by_id:
                     raise ValueError(
-                        f"Schema Id `{f['schemaId']}` not found in ontology"
-                    )
+                        f"Schema Id `{f['schemaId']}` not found in ontology")
 
             schema = self.fields_by_id[f["schemaId"]]
             if schema.kind == DataRowMetadataKind.enum:
                 continue
             elif schema.kind == DataRowMetadataKind.option:
-                field = DataRowMetadataField(schema_id=schema.parent, value=schema.uid)
+                field = DataRowMetadataField(schema_id=schema.parent,
+                                             value=schema.uid)
             elif schema.kind == DataRowMetadataKind.datetime:
-                field = DataRowMetadataField(
-                    schema_id=schema.uid, value=format_iso_from_string(f["value"])
-                )
+                field = DataRowMetadataField(schema_id=schema.uid,
+                                             value=format_iso_from_string(
+                                                 f["value"]))
             else:
-                field = DataRowMetadataField(schema_id=schema.uid, value=f["value"])
+                field = DataRowMetadataField(schema_id=schema.uid,
+                                             value=f["value"])
 
             field.name = schema.name
             parsed.append(field)
         return parsed
 
     def bulk_upsert(
-        self, metadata: List[DataRowMetadata]
+            self, metadata: List[DataRowMetadata]
     ) -> List[DataRowMetadataBatchResponse]:
         """Upsert metadata to a list of data rows
 
@@ -547,17 +551,15 @@ class DataRowMetadataOntology:
                     }
                 }
             }"""
-            res = self._client.execute(query, {"metadata": upserts})[
-                "upsertDataRowCustomMetadata"
-            ]
+            res = self._client.execute(
+                query, {"metadata": upserts})["upsertDataRowCustomMetadata"]
             return [
                 DataRowMetadataBatchResponse(
                     global_key=r["globalKey"],
                     data_row_id=r["dataRowId"],
                     error=r["error"],
                     fields=self.parse_metadata([r])[0].fields,
-                )
-                for r in res
+                ) for r in res
             ]
 
         items = []
@@ -568,11 +570,9 @@ class DataRowMetadataOntology:
                     data_row_id=m.data_row_id,
                     fields=list(
                         chain.from_iterable(
-                            self._parse_upsert(f, m.data_row_id) for f in m.fields
-                        )
-                    ),
-                ).dict(by_alias=True)
-            )
+                            self._parse_upsert(f, m.data_row_id)
+                            for f in m.fields)),
+                ).dict(by_alias=True))
         res = _batch_operations(_batch_upsert, items, self._batch_size)
         return res
 
@@ -662,9 +662,8 @@ class DataRowMetadataOntology:
                 }
             }
             """
-            res = self._client.execute(query, {"deletes": deletes})[
-                "deleteDataRowCustomMetadata"
-            ]
+            res = self._client.execute(
+                query, {"deletes": deletes})["deleteDataRowCustomMetadata"]
             failures = []
             for dr in res:
                 dr["fields"] = [f["schemaId"] for f in dr["fields"]]
@@ -672,8 +671,9 @@ class DataRowMetadataOntology:
             return failures
 
         items = [self._validate_delete(m) for m in deletes]
-        return _batch_operations(_batch_delete, items, batch_size=self._batch_size)
-
+        return _batch_operations(_batch_delete,
+                                 items,
+                                 batch_size=self._batch_size)
 
     @overload
     def bulk_export(self,
@@ -727,9 +727,9 @@ class DataRowMetadataOntology:
                         }
                     })['dataRowCustomMetadata'])
 
-        return _batch_operations(
-            _bulk_export, data_row_ids, batch_size=self._batch_size
-        )
+        return _batch_operations(_bulk_export,
+                                 data_row_ids,
+                                 batch_size=self._batch_size)
 
     def parse_upsert_metadata(self, metadata_fields) -> List[Dict[str, Any]]:
         """Converts either `DataRowMetadataField` or a dictionary representation
@@ -769,8 +769,7 @@ class DataRowMetadataOntology:
         # Convert all metadata fields to DataRowMetadataField type
         metadata_fields = [_convert_metadata_field(m) for m in metadata_fields]
         parsed_metadata = list(
-            chain.from_iterable(self._parse_upsert(m) for m in metadata_fields)
-        )
+            chain.from_iterable(self._parse_upsert(m) for m in metadata_fields))
         return [m.dict(by_alias=True) for m in parsed_metadata]
 
     def _upsert_schema(
@@ -789,8 +788,8 @@ class DataRowMetadataOntology:
                 }
             }"""
         res = self._client.execute(
-            query, {"data": upsert_schema.dict(exclude_none=True)}
-        )["upsertCustomMetadataSchema"]
+            query, {"data": upsert_schema.dict(exclude_none=True)
+                   })["upsertCustomMetadataSchema"]
         self.refresh_ontology()
         return _parse_metadata_schema(res)
 
@@ -818,7 +817,9 @@ class DataRowMetadataOntology:
                 self._load_option_by_name(metadatum)
 
     def _parse_upsert(
-        self, metadatum: DataRowMetadataField, data_row_id: Optional[str] = None
+            self,
+            metadatum: DataRowMetadataField,
+            data_row_id: Optional[str] = None
     ) -> List[_UpsertDataRowMetadataInput]:
         """Format for metadata upserts to GQL"""
 
@@ -829,8 +830,7 @@ class DataRowMetadataOntology:
             self.refresh_ontology()
             if metadatum.schema_id not in self.fields_by_id:
                 raise ValueError(
-                    f"Schema Id `{metadatum.schema_id}` not found in ontology"
-                )
+                    f"Schema Id `{metadatum.schema_id}` not found in ontology")
 
         schema = self.fields_by_id[metadatum.schema_id]
         try:
@@ -845,7 +845,8 @@ class DataRowMetadataOntology:
             elif schema.kind == DataRowMetadataKind.enum:
                 parsed = _validate_enum_parse(schema, metadatum)
             elif schema.kind == DataRowMetadataKind.option:
-                raise ValueError("An Option id should not be set as the Schema id")
+                raise ValueError(
+                    "An Option id should not be set as the Schema id")
             else:
                 raise ValueError(f"Unknown type: {schema}")
         except ValueError as e:
@@ -866,7 +867,8 @@ class DataRowMetadataOntology:
                 # Fetch latest metadata ontology if metadata can't be found
                 self.refresh_ontology()
                 if schema_id not in self.fields_by_id:
-                    raise ValueError(f"Schema Id `{schema_id}` not found in ontology")
+                    raise ValueError(
+                        f"Schema Id `{schema_id}` not found in ontology")
 
             schema = self.fields_by_id[schema_id]
             # handle users specifying enums by adding all option enums
@@ -879,7 +881,8 @@ class DataRowMetadataOntology:
             data_row_identifier=delete.data_row_id,
             schema_ids=list(delete.fields)).dict(by_alias=True)
 
-    def _validate_custom_schema_by_name(self, name: str) -> DataRowMetadataSchema:
+    def _validate_custom_schema_by_name(self,
+                                        name: str) -> DataRowMetadataSchema:
         if name not in self.custom_by_name_normalized:
             # Fetch latest metadata ontology if metadata can't be found
             self.refresh_ontology()
@@ -892,7 +895,7 @@ class DataRowMetadataOntology:
 def _batch_items(iterable: List[Any], size: int) -> Generator[Any, None, None]:
     l = len(iterable)
     for ndx in range(0, l, size):
-        yield iterable[ndx : min(ndx + size, l)]
+        yield iterable[ndx:min(ndx + size, l)]
 
 
 def _batch_operations(
@@ -919,7 +922,8 @@ def _validate_parse_embedding(
             )
         field.value = [float(x) for x in field.value]
     else:
-        raise ValueError(f"Expected a list for embedding. Found {type(field.value)}")
+        raise ValueError(
+            f"Expected a list for embedding. Found {type(field.value)}")
     return [field.dict(by_alias=True)]
 
 
@@ -931,8 +935,7 @@ def _validate_parse_number(
 
 
 def _validate_parse_datetime(
-    field: DataRowMetadataField,
-) -> List[Dict[str, Union[SchemaId, str]]]:
+    field: DataRowMetadataField,) -> List[Dict[str, Union[SchemaId, str]]]:
     if isinstance(field.value, str):
         field.value = format_iso_from_string(field.value)
     elif not isinstance(field.value, datetime):
@@ -940,41 +943,50 @@ def _validate_parse_datetime(
             f"Value for datetime fields must be either a string or datetime object. Found {type(field.value)}"
         )
 
-    return [{"schemaId": field.schema_id, "value": format_iso_datetime(field.value)}]
+    return [{
+        "schemaId": field.schema_id,
+        "value": format_iso_datetime(field.value)
+    }]
 
 
 def _validate_parse_text(
-    field: DataRowMetadataField,
-) -> List[Dict[str, Union[SchemaId, str]]]:
+    field: DataRowMetadataField,) -> List[Dict[str, Union[SchemaId, str]]]:
     if not isinstance(field.value, str):
         raise ValueError(
             f"Expected a string type for the text field. Found {type(field.value)}"
         )
 
     if len(field.value) > String.max_length:
-        raise ValueError(f"String fields cannot exceed {String.max_length} characters.")
+        raise ValueError(
+            f"String fields cannot exceed {String.max_length} characters.")
 
     return [field.dict(by_alias=True)]
 
 
 def _validate_enum_parse(
-    schema: DataRowMetadataSchema, field: DataRowMetadataField
-) -> List[Dict[str, Union[SchemaId, dict]]]:
+        schema: DataRowMetadataSchema,
+        field: DataRowMetadataField) -> List[Dict[str, Union[SchemaId, dict]]]:
     if schema.options:
         if field.value not in {o.uid for o in schema.options}:
-            raise ValueError(f"Option `{field.value}` not found for {field.schema_id}")
+            raise ValueError(
+                f"Option `{field.value}` not found for {field.schema_id}")
     else:
         raise ValueError("Incorrectly specified enum schema")
 
     return [
-        {"schemaId": field.schema_id, "value": {}},
-        {"schemaId": field.value, "value": {}},
+        {
+            "schemaId": field.schema_id,
+            "value": {}
+        },
+        {
+            "schemaId": field.value,
+            "value": {}
+        },
     ]
 
 
 def _parse_metadata_schema(
-    unparsed: Dict[str, Union[str, List]]
-) -> DataRowMetadataSchema:
+        unparsed: Dict[str, Union[str, List]]) -> DataRowMetadataSchema:
     uid = unparsed["id"]
     name = unparsed["name"]
     kind = DataRowMetadataKind(unparsed["kind"])
@@ -985,9 +997,10 @@ def _parse_metadata_schema(
             reserved=False,
             kind=DataRowMetadataKind.option,
             parent=uid,
-        )
-        for o in unparsed["options"]
+        ) for o in unparsed["options"]
     ]
-    return DataRowMetadataSchema(
-        uid=uid, name=name, reserved=False, kind=kind, options=options or None
-    )
+    return DataRowMetadataSchema(uid=uid,
+                                 name=name,
+                                 reserved=False,
+                                 kind=kind,
+                                 options=options or None)

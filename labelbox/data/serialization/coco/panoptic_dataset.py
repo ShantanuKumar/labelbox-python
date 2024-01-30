@@ -48,9 +48,8 @@ def vector_to_coco_segment_info(
     )
 
 
-def mask_to_coco_segment_info(
-    canvas: np.ndarray, annotation, annotation_idx: int, category_id
-):
+def mask_to_coco_segment_info(canvas: np.ndarray, annotation,
+                              annotation_idx: int, category_id):
     color = id_to_rgb(annotation_idx)
     mask = annotation.value.draw(color=color)
     shapely = annotation.value.shapely
@@ -70,9 +69,11 @@ def mask_to_coco_segment_info(
     )
 
 
-def process_label(
-    label: Label, idx: Union[int, str], image_root, mask_root, all_stuff=False
-):
+def process_label(label: Label,
+                  idx: Union[int, str],
+                  image_root,
+                  mask_root,
+                  all_stuff=False):
     """
     Masks become stuff
     Polygon and rectangle become thing
@@ -91,8 +92,8 @@ def process_label(
             categories[annotation.name] = hash_category_name(annotation.name)
             if isinstance(annotation.value, Mask):
                 coco_segment_info = mask_to_coco_segment_info(
-                    canvas, annotation, class_idx + 1, categories[annotation.name]
-                )
+                    canvas, annotation, class_idx + 1,
+                    categories[annotation.name])
 
                 if coco_segment_info is None:
                     # Filter out empty masks
@@ -106,7 +107,8 @@ def process_label(
                 coco_vector_info = vector_to_coco_segment_info(
                     canvas,
                     annotation,
-                    annotation_idx=(class_idx if all_stuff else annotation_idx) + 1,
+                    annotation_idx=(class_idx if all_stuff else annotation_idx)
+                    + 1,
                     image=image,
                     category_id=categories[annotation.name],
                 )
@@ -124,9 +126,9 @@ def process_label(
     Image.fromarray(canvas.astype(np.uint8)).save(mask_file)
     return (
         image,
-        PanopticAnnotation(
-            image_id=image_id, file_name=Path(mask_file.name), segments_info=segments
-        ),
+        PanopticAnnotation(image_id=image_id,
+                           file_name=Path(mask_file.name),
+                           segments_info=segments),
         categories,
         is_thing,
     )
@@ -139,9 +141,12 @@ class CocoPanopticDataset(BaseModel):
     categories: List[Categories]
 
     @classmethod
-    def from_common(
-        cls, labels: LabelCollection, image_root, mask_root, all_stuff, max_workers=8
-    ):
+    def from_common(cls,
+                    labels: LabelCollection,
+                    image_root,
+                    mask_root,
+                    all_stuff,
+                    max_workers=8):
         all_coco_annotations = []
         coco_categories = {}
         coco_things = {}
@@ -150,12 +155,12 @@ class CocoPanopticDataset(BaseModel):
         if max_workers:
             with ProcessPoolExecutor(max_workers=max_workers) as exc:
                 futures = [
-                    exc.submit(
-                        process_label, label, idx, image_root, mask_root, all_stuff
-                    )
-                    for idx, label in enumerate(labels)
+                    exc.submit(process_label, label, idx, image_root, mask_root,
+                               all_stuff) for idx, label in enumerate(labels)
                 ]
-                results = [future.result() for future in tqdm(as_completed(futures))]
+                results = [
+                    future.result() for future in tqdm(as_completed(futures))
+                ]
         else:
             results = [
                 process_label(label, idx, image_root, mask_root, all_stuff)
@@ -178,8 +183,7 @@ class CocoPanopticDataset(BaseModel):
                 name=name,
                 supercategory="all",
                 isthing=coco_things.get(name, 1),
-            )
-            for name, idx in coco_categories.items()
+            ) for name, idx in coco_categories.items()
         ]
 
         for annot in all_coco_annotations:
@@ -187,14 +191,19 @@ class CocoPanopticDataset(BaseModel):
                 segment.category_id = category_mapping[segment.category_id]
 
         return CocoPanopticDataset(
-            info={"image_root": image_root, "mask_root": mask_root},
+            info={
+                "image_root": image_root,
+                "mask_root": mask_root
+            },
             images=images,
             annotations=all_coco_annotations,
             categories=categories,
         )
 
     def to_common(self, image_root: Path, mask_root: Path):
-        category_lookup = {category.id: category for category in self.categories}
+        category_lookup = {
+            category.id: category for category in self.categories
+        }
         annotation_lookup = {
             annotation.image_id: annotation for annotation in self.annotations
         }
@@ -211,7 +220,8 @@ class CocoPanopticDataset(BaseModel):
                 raise ValueError(
                     f"COCO masks must be stored as png files and their extension must be `.png`. Found {annotation.file_name}"
                 )
-            mask = MaskData(file_path=str(Path(mask_root, annotation.file_name)))
+            mask = MaskData(
+                file_path=str(Path(mask_root, annotation.file_name)))
 
             for segmentation in annotation.segments_info:
                 category = category_lookup[segmentation.category_id]
@@ -219,8 +229,7 @@ class CocoPanopticDataset(BaseModel):
                     ObjectAnnotation(
                         name=category.name,
                         value=Mask(mask=mask, color=id_to_rgb(segmentation.id)),
-                    )
-                )
+                    ))
             data = ImageData(file_path=str(im_path))
             yield Label(data=data, annotations=annotations)
             del annotation_lookup[image.id]

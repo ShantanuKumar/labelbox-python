@@ -15,9 +15,9 @@ def test_text():
     text = "hello world"
     metadata = []
     media_attributes = {}
-    text_data = TextData(
-        text=text, metadata=metadata, media_attributes=media_attributes
-    )
+    text_data = TextData(text=text,
+                         metadata=metadata,
+                         media_attributes=media_attributes)
     assert text_data.text == text
 
 

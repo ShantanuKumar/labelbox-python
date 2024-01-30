@@ -9,7 +9,8 @@ from .base import ConfidenceValue, BaseMetric
 Count = conint(ge=0, le=1e10)
 
 ConfusionMatrixMetricValue = Tuple[Count, Count, Count, Count]
-ConfusionMatrixMetricConfidenceValue = Dict[ConfidenceValue, ConfusionMatrixMetricValue]
+ConfusionMatrixMetricConfidenceValue = Dict[ConfidenceValue,
+                                            ConfusionMatrixMetricValue]
 
 
 class ConfusionMatrixAggregation(Enum):
@@ -29,7 +30,7 @@ class ConfusionMatrixMetric(BaseMetric):
     """
 
     metric_name: str
-    value: Union[ConfusionMatrixMetricValue, ConfusionMatrixMetricConfidenceValue]
+    value: Union[ConfusionMatrixMetricValue,
+                 ConfusionMatrixMetricConfidenceValue]
     aggregation: ConfusionMatrixAggregation = Field(
-        ConfusionMatrixAggregation.CONFUSION_MATRIX, const=True
-    )
+        ConfusionMatrixAggregation.CONFUSION_MATRIX, const=True)

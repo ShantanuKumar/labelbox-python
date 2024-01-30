@@ -14,6 +14,7 @@ DShape = TypeVar("DShape")
 
 
 class _TypedArray(np.ndarray, Generic[DType, DShape]):
+
     @classmethod
     def __get_validators__(cls):
         yield cls.validate
@@ -43,7 +44,8 @@ elif version.parse(np.__version__) >= version.parse("1.23.0"):
     from numpy._typing import _GenericAlias
 
     TypedArray = _GenericAlias(_TypedArray, (Any, DType))
-elif version.parse("1.22.0") <= version.parse(np.__version__) < version.parse("1.23.0"):
+elif version.parse("1.22.0") <= version.parse(
+        np.__version__) < version.parse("1.23.0"):
     from numpy.typing import _GenericAlias
 
     TypedArray = _GenericAlias(_TypedArray, (Any, DType))

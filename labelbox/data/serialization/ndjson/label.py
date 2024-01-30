@@ -81,8 +81,7 @@ class NDLabel(BaseModel):
                         ndjson=ndjson_annotation,
                         source=ndjson_annotation.relationship.source,
                         target=ndjson_annotation.relationship.target,
-                    )
-                )
+                    ))
             else:
                 # if this is the first object in this group, we
                 # take note of the DataRow this group belongs to
@@ -94,16 +93,18 @@ class NDLabel(BaseModel):
                 # we need to change the value type of
                 # `_AnnotationGroupTuple.ndjson_objects` to accept a list of objects
                 # and adapt the code to support duplicate UUIDs
-                assert (
-                    ndjson_annotation.uuid not in group.ndjson_annotations
-                ), f"UUID '{ndjson_annotation.uuid}' is not unique"
+                assert (ndjson_annotation.uuid not in group.ndjson_annotations
+                       ), f"UUID '{ndjson_annotation.uuid}' is not unique"
 
-                group.ndjson_annotations[ndjson_annotation.uuid] = ndjson_annotation
+                group.ndjson_annotations[
+                    ndjson_annotation.uuid] = ndjson_annotation
 
-        return LabelGenerator(data=self._generate_annotations(annotation_groups))
+        return LabelGenerator(
+            data=self._generate_annotations(annotation_groups))
 
     @classmethod
-    def from_common(cls, data: LabelCollection) -> Generator["NDLabel", None, None]:
+    def from_common(cls,
+                    data: LabelCollection) -> Generator["NDLabel", None, None]:
         for label in data:
             yield from cls._create_non_video_annotations(label)
             yield from cls._create_video_annotations(label)
@@ -124,34 +125,35 @@ class NDLabel(BaseModel):
                             ndjson_annotation,
                             ndjson_annotation.name,
                             ndjson_annotation.schema_id,
-                        )
-                    )
+                        ))
                 elif isinstance(ndjson_annotation, NDSegments):
                     annotations.extend(
                         NDSegments.to_common(
                             ndjson_annotation,
                             ndjson_annotation.name,
                             ndjson_annotation.schema_id,
-                        )
-                    )
+                        ))
                 elif isinstance(ndjson_annotation, NDDicomMasks):
-                    annotations.append(NDDicomMasks.to_common(ndjson_annotation))
+                    annotations.append(
+                        NDDicomMasks.to_common(ndjson_annotation))
                 elif isinstance(ndjson_annotation, NDVideoMasks):
-                    annotations.append(NDVideoMasks.to_common(ndjson_annotation))
+                    annotations.append(
+                        NDVideoMasks.to_common(ndjson_annotation))
                 elif isinstance(ndjson_annotation, NDObjectType.__args__):
                     annotation = NDObject.to_common(ndjson_annotation)
                     annotations.append(annotation)
                     relationship_annotations[uuid] = annotation
-                elif isinstance(ndjson_annotation, NDClassificationType.__args__):
-                    annotations.extend(NDClassification.to_common(ndjson_annotation))
-                elif isinstance(
-                    ndjson_annotation, (NDScalarMetric, NDConfusionMatrixMetric)
-                ):
-                    annotations.append(NDMetricAnnotation.to_common(ndjson_annotation))
+                elif isinstance(ndjson_annotation,
+                                NDClassificationType.__args__):
+                    annotations.extend(
+                        NDClassification.to_common(ndjson_annotation))
+                elif isinstance(ndjson_annotation,
+                                (NDScalarMetric, NDConfusionMatrixMetric)):
+                    annotations.append(
+                        NDMetricAnnotation.to_common(ndjson_annotation))
                 else:
                     raise TypeError(
-                        f"Unsupported annotation. {type(ndjson_annotation)}"
-                    )
+                        f"Unsupported annotation. {type(ndjson_annotation)}")
 
             # after all the annotations have been discovered, we can now create
             # the relationship objects and use references to the objects
@@ -167,8 +169,8 @@ class NDLabel(BaseModel):
                         f"Relationship object refers to nonexistent object with UUID '{relationship.source}' and/or '{relationship.target}'"
                     )
                 annotations.append(
-                    NDRelationship.to_common(relationship.ndjson, source, target)
-                )
+                    NDRelationship.to_common(relationship.ndjson, source,
+                                             target))
 
             yield Label(
                 annotations=annotations,
@@ -178,19 +180,17 @@ class NDLabel(BaseModel):
     def _infer_media_type(
         self,
         data_row: DataRow,
-        annotations: List[
-            Union[
-                TextEntity,
-                ConversationEntity,
-                VideoClassificationAnnotation,
-                DICOMObjectAnnotation,
-                VideoObjectAnnotation,
-                ObjectAnnotation,
-                ClassificationAnnotation,
-                ScalarMetric,
-                ConfusionMatrixMetric,
-            ]
-        ],
+        annotations: List[Union[
+            TextEntity,
+            ConversationEntity,
+            VideoClassificationAnnotation,
+            DICOMObjectAnnotation,
+            VideoObjectAnnotation,
+            ObjectAnnotation,
+            ClassificationAnnotation,
+            ScalarMetric,
+            ConfusionMatrixMetric,
+        ]],
     ) -> Union[TextData, VideoData, ImageData]:
         if len(annotations) == 0:
             raise ValueError("Missing annotations while inferring media type")
@@ -210,7 +210,8 @@ class NDLabel(BaseModel):
             return data(global_key=data_row.global_key)
 
     @staticmethod
-    def _get_consecutive_frames(frames_indices: List[int]) -> List[Tuple[int, int]]:
+    def _get_consecutive_frames(
+            frames_indices: List[int]) -> List[Tuple[int, int]]:
         consecutive = []
         for k, g in groupby(enumerate(frames_indices), lambda x: x[0] - x[1]):
             group = list(map(itemgetter(1), g))
@@ -220,22 +221,18 @@ class NDLabel(BaseModel):
     @classmethod
     def _get_segment_frame_ranges(
         cls,
-        annotation_group: List[
-            Union[VideoClassificationAnnotation, VideoObjectAnnotation]
-        ],
+        annotation_group: List[Union[VideoClassificationAnnotation,
+                                     VideoObjectAnnotation]],
     ) -> List[Tuple[int, int]]:
-        sorted_frame_segment_indices = sorted(
-            [
-                (annotation.frame, annotation.segment_index)
-                for annotation in annotation_group
-                if annotation.segment_index is not None
-            ]
-        )
+        sorted_frame_segment_indices = sorted([
+            (annotation.frame, annotation.segment_index)
+            for annotation in annotation_group
+            if annotation.segment_index is not None
+        ])
         if len(sorted_frame_segment_indices) == 0:
             # Group segment by consecutive frames, since `segment_index` is not present
             return cls._get_consecutive_frames(
-                sorted([annotation.frame for annotation in annotation_group])
-            )
+                sorted([annotation.frame for annotation in annotation_group]))
         elif len(sorted_frame_segment_indices) == len(annotation_group):
             # Group segment by segment_index
             last_segment_id = 0
@@ -253,8 +250,7 @@ class NDLabel(BaseModel):
             return frame_ranges
         else:
             raise ValueError(
-                f"Video annotations cannot partially have `segment_index` set"
-            )
+                f"Video annotations cannot partially have `segment_index` set")
 
     @classmethod
     def _create_video_annotations(
@@ -263,14 +259,16 @@ class NDLabel(BaseModel):
         video_annotations = defaultdict(list)
         for annot in label.annotations:
             if isinstance(
-                annot, (VideoClassificationAnnotation, VideoObjectAnnotation)
-            ):
-                video_annotations[annot.feature_schema_id or annot.name].append(annot)
+                    annot,
+                (VideoClassificationAnnotation, VideoObjectAnnotation)):
+                video_annotations[annot.feature_schema_id or
+                                  annot.name].append(annot)
             elif isinstance(annot, VideoMaskAnnotation):
                 yield NDObject.from_common(annotation=annot, data=label.data)
 
         for annotation_group in video_annotations.values():
-            segment_frame_ranges = cls._get_segment_frame_ranges(annotation_group)
+            segment_frame_ranges = cls._get_segment_frame_ranges(
+                annotation_group)
             if isinstance(annotation_group[0], VideoClassificationAnnotation):
                 annotation = annotation_group[0]
                 frames_data = []
@@ -284,10 +282,8 @@ class NDLabel(BaseModel):
                 for start_frame, end_frame in segment_frame_ranges:
                     segment = []
                     for annotation in annotation_group:
-                        if (
-                            annotation.keyframe
-                            and start_frame <= annotation.frame <= end_frame
-                        ):
+                        if (annotation.keyframe and
+                                start_frame <= annotation.frame <= end_frame):
                             segment.append(annotation)
                     segments.append(segment)
                 yield NDObject.from_common(segments, label.data)
@@ -295,9 +291,7 @@ class NDLabel(BaseModel):
     @classmethod
     def _create_non_video_annotations(cls, label: Label):
         non_video_annotations = [
-            annot
-            for annot in label.annotations
-            if not isinstance(
+            annot for annot in label.annotations if not isinstance(
                 annot,
                 (
                     VideoClassificationAnnotation,

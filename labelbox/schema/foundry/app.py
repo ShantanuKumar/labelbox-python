@@ -1,6 +1,6 @@
 from labelbox.utils import _CamelCaseMixin
 
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from typing import Any, Dict, Optional
 
@@ -20,4 +20,4 @@ class App(_CamelCaseMixin, BaseModel):
         return "App"
 
 
-APP_FIELD_NAMES = list(App.schema()['properties'].keys())
+APP_FIELD_NAMES = list(App.schema()["properties"].keys())

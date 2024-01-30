@@ -88,7 +88,8 @@ class TextData(BaseData, _NoCoercionMixin):
         elif self.text is not None:
             self.url = signer(self.text.encode())
         else:
-            raise ValueError("One of url, im_bytes, file_path, numpy must not be None.")
+            raise ValueError(
+                "One of url, im_bytes, file_path, numpy must not be None.")
         return self.url
 
     @root_validator
@@ -108,8 +109,7 @@ class TextData(BaseData, _NoCoercionMixin):
         return (
             f"TextData(file_path={self.file_path},"
             f"text={self.text[:30] + '...' if self.text is not None else None},"
-            f"url={self.url})"
-        )
+            f"url={self.url})")
 
     class config:
         # Required for discriminating between data types

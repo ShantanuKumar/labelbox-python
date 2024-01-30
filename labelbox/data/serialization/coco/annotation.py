@@ -11,7 +11,8 @@ from .path import PathSerializerMixin
 def rle_decoding(rle_arr: List[int], w: int, h: int) -> np.ndarray:
     indices = []
     for idx, cnt in zip(rle_arr[0::2], rle_arr[1::2]):
-        indices.extend(list(range(idx - 1, idx + cnt - 1)))  # RLE is 1-based index
+        indices.extend(list(range(idx - 1,
+                                  idx + cnt - 1)))  # RLE is 1-based index
     mask = np.zeros(h * w, dtype=np.uint8)
     mask[indices] = 1
     return mask.reshape((w, h)).T
@@ -20,9 +21,8 @@ def rle_decoding(rle_arr: List[int], w: int, h: int) -> np.ndarray:
 def get_annotation_lookup(annotations):
     annotation_lookup = defaultdict(list)
     for annotation in annotations:
-        annotation_lookup[
-            getattr(annotation, "image_id", None) or getattr(annotation, "name")
-        ].append(annotation)
+        annotation_lookup[getattr(annotation, "image_id", None) or
+                          getattr(annotation, "name")].append(annotation)
     return annotation_lookup
 
 

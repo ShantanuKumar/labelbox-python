@@ -25,9 +25,8 @@ class NDAnswer(ConfidenceMixin):
 
     @root_validator()
     def must_set_one(cls, values):
-        if ("schema_id" not in values or values["schema_id"] is None) and (
-            "name" not in values or values["name"] is None
-        ):
+        if ("schema_id" not in values or values["schema_id"]
+                is None) and ("name" not in values or values["name"] is None):
             raise ValueError("Schema id or name are not set. Set either one.")
         return values
 
@@ -74,9 +73,8 @@ class NDTextSubclass(NDAnswer):
         return Text(answer=self.answer, confidence=self.confidence)
 
     @classmethod
-    def from_common(
-        cls, text: Text, name: str, feature_schema_id: Cuid
-    ) -> "NDTextSubclass":
+    def from_common(cls, text: Text, name: str,
+                    feature_schema_id: Cuid) -> "NDTextSubclass":
         return cls(
             answer=text.answer,
             name=name,
@@ -89,25 +87,22 @@ class NDChecklistSubclass(NDAnswer):
     answer: List[NDAnswer] = Field(..., alias="answers")
 
     def to_common(self) -> Checklist:
-        return Checklist(
-            answer=[
-                ClassificationAnswer(
-                    name=answer.name,
-                    feature_schema_id=answer.schema_id,
-                    confidence=answer.confidence,
-                    classifications=[
-                        NDSubclassification.to_common(annot)
-                        for annot in answer.classifications
-                    ],
-                )
-                for answer in self.answer
-            ]
-        )
+        return Checklist(answer=[
+            ClassificationAnswer(
+                name=answer.name,
+                feature_schema_id=answer.schema_id,
+                confidence=answer.confidence,
+                classifications=[
+                    NDSubclassification.to_common(annot)
+                    for annot in answer.classifications
+                ],
+            )
+            for answer in self.answer
+        ])
 
     @classmethod
-    def from_common(
-        cls, checklist: Checklist, name: str, feature_schema_id: Cuid
-    ) -> "NDChecklistSubclass":
+    def from_common(cls, checklist: Checklist, name: str,
+                    feature_schema_id: Cuid) -> "NDChecklistSubclass":
         return cls(
             answer=[
                 NDAnswer(
@@ -136,22 +131,19 @@ class NDRadioSubclass(NDAnswer):
     answer: NDAnswer
 
     def to_common(self) -> Radio:
-        return Radio(
-            answer=ClassificationAnswer(
-                name=self.answer.name,
-                feature_schema_id=self.answer.schema_id,
-                confidence=self.answer.confidence,
-                classifications=[
-                    NDSubclassification.to_common(annot)
-                    for annot in self.answer.classifications
-                ],
-            )
-        )
+        return Radio(answer=ClassificationAnswer(
+            name=self.answer.name,
+            feature_schema_id=self.answer.schema_id,
+            confidence=self.answer.confidence,
+            classifications=[
+                NDSubclassification.to_common(annot)
+                for annot in self.answer.classifications
+            ],
+        ))
 
     @classmethod
-    def from_common(
-        cls, radio: Radio, name: str, feature_schema_id: Cuid
-    ) -> "NDRadioSubclass":
+    def from_common(cls, radio: Radio, name: str,
+                    feature_schema_id: Cuid) -> "NDRadioSubclass":
         return cls(
             answer=NDAnswer(
                 name=radio.answer.name,
@@ -171,6 +163,7 @@ class NDRadioSubclass(NDAnswer):
 
 
 class NDText(NDAnnotation, NDTextSubclass):
+
     @classmethod
     def from_common(
         cls,
@@ -195,6 +188,7 @@ class NDText(NDAnnotation, NDTextSubclass):
 
 
 class NDChecklist(NDAnnotation, NDChecklistSubclass, VideoSupported):
+
     @classmethod
     def from_common(
         cls,
@@ -231,6 +225,7 @@ class NDChecklist(NDAnnotation, NDChecklistSubclass, VideoSupported):
 
 
 class NDRadio(NDAnnotation, NDRadioSubclass, VideoSupported):
+
     @classmethod
     def from_common(
         cls,
@@ -264,6 +259,7 @@ class NDRadio(NDAnnotation, NDRadioSubclass, VideoSupported):
 
 
 class NDSubclassification:
+
     @classmethod
     def from_common(
         cls, annotation: ClassificationAnnotation
@@ -273,12 +269,12 @@ class NDSubclassification:
             raise TypeError(
                 f"Unable to convert object to MAL format. `{type(annotation.value)}`"
             )
-        return classify_obj.from_common(
-            annotation.value, annotation.name, annotation.feature_schema_id
-        )
+        return classify_obj.from_common(annotation.value, annotation.name,
+                                        annotation.feature_schema_id)
 
     @staticmethod
-    def to_common(annotation: "NDClassificationType") -> ClassificationAnnotation:
+    def to_common(
+            annotation: "NDClassificationType") -> ClassificationAnnotation:
         return ClassificationAnnotation(
             value=annotation.to_common(),
             name=annotation.name,
@@ -299,6 +295,7 @@ class NDSubclassification:
 
 
 class NDClassification:
+
     @staticmethod
     def to_common(
         annotation: "NDClassificationType",
@@ -318,14 +315,14 @@ class NDClassification:
         for frame in annotation.frames:
             for idx in range(frame.start, frame.end + 1, 1):
                 results.append(
-                    VideoClassificationAnnotation(frame=idx, **common.dict())
-                )
+                    VideoClassificationAnnotation(frame=idx, **common.dict()))
         return results
 
     @classmethod
     def from_common(
         cls,
-        annotation: Union[ClassificationAnnotation, VideoClassificationAnnotation],
+        annotation: Union[ClassificationAnnotation,
+                          VideoClassificationAnnotation],
         data: Union[VideoData, TextData, ImageData],
     ) -> Union[NDTextSubclass, NDChecklistSubclass, NDRadioSubclass]:
         classify_obj = cls.lookup_classification(annotation)
@@ -346,18 +343,22 @@ class NDClassification:
 
     @staticmethod
     def lookup_classification(
-        annotation: Union[ClassificationAnnotation, VideoClassificationAnnotation]
+        annotation: Union[ClassificationAnnotation,
+                          VideoClassificationAnnotation]
     ) -> Union[NDText, NDChecklist, NDRadio]:
         if isinstance(annotation.value, Dropdown):
             raise TypeError("Dropdowns are not supported for MAL.")
-        return {Text: NDText, Checklist: NDChecklist, Radio: NDRadio}.get(
-            type(annotation.value)
-        )
+        return {
+            Text: NDText,
+            Checklist: NDChecklist,
+            Radio: NDRadio
+        }.get(type(annotation.value))
 
 
 # Make sure to keep NDChecklistSubclass prior to NDRadioSubclass in the list,
 # otherwise list of answers gets parsed by NDRadio whereas NDChecklist must be used
-NDSubclassificationType = Union[NDChecklistSubclass, NDRadioSubclass, NDTextSubclass]
+NDSubclassificationType = Union[NDChecklistSubclass, NDRadioSubclass,
+                                NDTextSubclass]
 
 NDAnswer.update_forward_refs()
 NDChecklistSubclass.update_forward_refs()

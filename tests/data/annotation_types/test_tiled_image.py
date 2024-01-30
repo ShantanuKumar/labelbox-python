@@ -32,7 +32,8 @@ def test_tiled_bounds(epsg):
 def test_tiled_bounds_same(epsg):
     single_bound = Point(x=0, y=0)
     with pytest.raises(ValidationError):
-        tiled_bounds = TiledBounds(epsg=epsg, bounds=[single_bound, single_bound])
+        tiled_bounds = TiledBounds(epsg=epsg,
+                                   bounds=[single_bound, single_bound])
 
 
 def test_create_tiled_image_data():
@@ -57,9 +58,9 @@ def test_create_tiled_image_data():
 def test_epsg_point_projections():
     zoom = 4
 
-    bounds_simple = TiledBounds(
-        epsg=EPSG.SIMPLEPIXEL, bounds=[Point(x=0, y=0), Point(x=256, y=256)]
-    )
+    bounds_simple = TiledBounds(epsg=EPSG.SIMPLEPIXEL,
+                                bounds=[Point(x=0, y=0),
+                                        Point(x=256, y=256)])
 
     bounds_3857 = TiledBounds(
         epsg=EPSG.EPSG3857,

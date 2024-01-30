@@ -26,7 +26,8 @@ from ...annotation_types.types import Cuid
 class LBV1ObjectBase(LBV1Feature):
     color: Optional[str] = None
     instanceURI: Optional[str] = None
-    classifications: List[Union[LBV1Text, LBV1Radio, LBV1Dropdown, LBV1Checklist]] = []
+    classifications: List[Union[LBV1Text, LBV1Radio, LBV1Dropdown,
+                                LBV1Checklist]] = []
     page: Optional[int] = None
     unit: Optional[str] = None
 
@@ -84,11 +85,9 @@ class LBV1TILine(LBV1ObjectBase):
     geometry: TILineCoordinate
 
     def to_common(self) -> Line:
-        return Line(
-            points=[
-                Point(x=coord[0], y=coord[1]) for coord in self.geometry.coordinates
-            ]
-        )
+        return Line(points=[
+            Point(x=coord[0], y=coord[1]) for coord in self.geometry.coordinates
+        ])
 
 
 class LBV1TIPolygon(LBV1ObjectBase):
@@ -98,8 +97,7 @@ class LBV1TIPolygon(LBV1ObjectBase):
     def to_common(self) -> Polygon:
         for coord_list in self.geometry.coordinates:
             return Polygon(
-                points=[Point(x=coord[0], y=coord[1]) for coord in coord_list]
-            )
+                points=[Point(x=coord[0], y=coord[1]) for coord in coord_list])
 
 
 class LBV1TIRectangle(LBV1ObjectBase):
@@ -115,9 +113,8 @@ class LBV1TIRectangle(LBV1ObjectBase):
         start = [min_x, min_y]
         end = [max_x, max_y]
 
-        return Rectangle(
-            start=Point(x=start[0], y=start[1]), end=Point(x=end[0], y=end[1])
-        )
+        return Rectangle(start=Point(x=start[0], y=start[1]),
+                         end=Point(x=end[0], y=end[1]))
 
 
 class _Point(BaseModel):
@@ -138,9 +135,8 @@ class LBV1Rectangle(LBV1ObjectBase):
     def to_common(self) -> Rectangle:
         return Rectangle(
             start=Point(x=self.bbox.left, y=self.bbox.top),
-            end=Point(
-                x=self.bbox.left + self.bbox.width, y=self.bbox.top + self.bbox.height
-            ),
+            end=Point(x=self.bbox.left + self.bbox.width,
+                      y=self.bbox.top + self.bbox.height),
         )
 
     @classmethod
@@ -264,7 +260,9 @@ class LBV1Mask(LBV1ObjectBase):
             classifications=classifications,
             schema_id=feature_schema_id,
             title=title,
-            **{k: v for k, v in extra.items() if k != "instanceURI"},
+            **{
+                k: v for k, v in extra.items() if k != "instanceURI"
+            },
         )
 
 
@@ -298,9 +296,8 @@ class LBV1TextEntity(LBV1ObjectBase):
         extra: Dict[str, Any],
     ) -> "LBV1TextEntity":
         return cls(
-            data=_Location(
-                location=_TextPoint(start=text_entity.start, end=text_entity.end)
-            ),
+            data=_Location(location=_TextPoint(start=text_entity.start,
+                                               end=text_entity.end)),
             classifications=classifications,
             schema_id=feature_schema_id,
             title=title,
@@ -309,20 +306,18 @@ class LBV1TextEntity(LBV1ObjectBase):
 
 
 class LBV1Objects(BaseModel):
-    objects: List[
-        Union[
-            LBV1Line,
-            LBV1Point,
-            LBV1Polygon,
-            LBV1Rectangle,
-            LBV1TextEntity,
-            LBV1Mask,
-            LBV1TIPoint,
-            LBV1TILine,
-            LBV1TIPolygon,
-            LBV1TIRectangle,
-        ]
-    ]
+    objects: List[Union[
+        LBV1Line,
+        LBV1Point,
+        LBV1Polygon,
+        LBV1Rectangle,
+        LBV1TextEntity,
+        LBV1Mask,
+        LBV1TIPoint,
+        LBV1TILine,
+        LBV1TIPolygon,
+        LBV1TIRectangle,
+    ]]
 
     def to_common(self) -> List[ObjectAnnotation]:
         objects = [
@@ -338,8 +333,7 @@ class LBV1Objects(BaseModel):
                             "title": cls.title,
                             "value": cls.value,
                         },
-                    )
-                    for cls in obj.classifications
+                    ) for cls in obj.classifications
                 ],
                 name=obj.title,
                 feature_schema_id=obj.schema_id,
@@ -351,8 +345,7 @@ class LBV1Objects(BaseModel):
                     "page": obj.page,
                     "unit": obj.unit,
                 },
-            )
-            for obj in self.objects
+            ) for obj in self.objects
         ]
         return objects
 
@@ -362,8 +355,7 @@ class LBV1Objects(BaseModel):
         for annotation in annotations:
             obj = cls.lookup_object(annotation)
             subclasses = LBV1Classifications.from_common(
-                annotation.classifications
-            ).classifications
+                annotation.classifications).classifications
 
             objects.append(
                 obj.from_common(
@@ -375,16 +367,14 @@ class LBV1Objects(BaseModel):
                         "keyframe": getattr(annotation, "keyframe", None),
                         **annotation.extra,
                     },
-                )
-            )
+                ))
         return cls(objects=objects)
 
     @staticmethod
     def lookup_object(
         annotation: ObjectAnnotation,
-    ) -> Type[
-        Union[LBV1Line, LBV1Point, LBV1Polygon, LBV1Rectangle, LBV1Mask, LBV1TextEntity]
-    ]:
+    ) -> Type[Union[LBV1Line, LBV1Point, LBV1Polygon, LBV1Rectangle, LBV1Mask,
+                    LBV1TextEntity]]:
         result = {
             Line: LBV1Line,
             Point: LBV1Point,

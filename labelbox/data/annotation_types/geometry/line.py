@@ -25,16 +25,19 @@ class Line(Geometry):
 
     @property
     def geometry(self) -> geojson.MultiLineString:
-        return geojson.MultiLineString([[[point.x, point.y] for point in self.points]])
+        return geojson.MultiLineString(
+            [[[point.x, point.y] for point in self.points]])
 
     @classmethod
     def from_shapely(cls, shapely_obj: SLineString) -> "Line":
         """Transforms a shapely object."""
         if not isinstance(shapely_obj, SLineString):
-            raise TypeError(f"Expected Shapely Line. Got {shapely_obj.geom_type}")
+            raise TypeError(
+                f"Expected Shapely Line. Got {shapely_obj.geom_type}")
 
         obj_coords = shapely_obj.__geo_interface__["coordinates"]
-        return Line(points=[Point(x=coords[0], y=coords[1]) for coords in obj_coords])
+        return Line(
+            points=[Point(x=coords[0], y=coords[1]) for coords in obj_coords])
 
     def draw(
         self,
@@ -58,7 +61,11 @@ class Line(Geometry):
         """
         canvas = self.get_or_create_canvas(height, width, canvas)
         pts = np.array(self.geometry["coordinates"]).astype(np.int32)
-        return cv2.polylines(canvas, pts, False, color=color, thickness=thickness)
+        return cv2.polylines(canvas,
+                             pts,
+                             False,
+                             color=color,
+                             thickness=thickness)
 
     @validator("points")
     def is_geom_valid(cls, points):
