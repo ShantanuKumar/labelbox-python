@@ -8,7 +8,7 @@ from labelbox.data.annotation_types.data.video import VideoData
 from labelbox.schema.data_row import DataRow
 from labelbox.schema.media_type import MediaType
 import labelbox.types as lb_types
-from labelbox.data.annotation_types.data import AudioData, ConversationData, DicomData, DocumentData, HTMLData, ImageData, TextData
+from labelbox.data.annotation_types.data import AudioData, ConversationData, DicomData, DocumentData, HTMLData, ImageData, TextData, LlmPromptCreationData, LlmPromptResponseCreationData, LlmResponseCreationData
 from labelbox.data.serialization import NDJsonConverter
 from labelbox.schema.annotation_import import AnnotationImportState
 from utils import remove_keys_recursive, rename_cuid_key_recursive
@@ -59,12 +59,13 @@ test_params = [[
 def get_annotation_comparison_dicts_from_labels(labels):
     labels_ndjson = list(NDJsonConverter.serialize(labels))
     for annotation in labels_ndjson:
-        annotation.pop('uuid')
+        annotation.pop('uuid', None)
         annotation.pop('dataRow')
 
         if 'masks' in annotation:
             for frame in annotation['masks']['frames']:
                 frame.pop('instanceURI')
+                frame.pop('imBytes')
             for instance in annotation['masks']['instances']:
                 instance.pop('colorRGB')
     return labels_ndjson
@@ -133,7 +134,8 @@ def create_data_row_for_project(project, dataset, data_row_ndjson, batch_name):
 # TODO: Add VideoData. Currently label import job finishes without errors but project.export_labels() returns empty list.
 @pytest.mark.parametrize('data_type_class', [
     AudioData, ConversationData, DicomData, DocumentData, HTMLData, ImageData,
-    TextData
+    TextData, LlmPromptCreationData, LlmPromptResponseCreationData,
+    LlmResponseCreationData
 ])
 def test_import_data_types(
     client,
@@ -242,12 +244,19 @@ def set_project_media_type_from_data_type(project, data_type_class):
     media_type = to_pascal_case(data_type_string)
     if media_type == 'Conversation':
         media_type = 'Conversational'
+    elif media_type == 'Llmpromptcreation':
+        media_type = 'LLMPromptCreation'
+    elif media_type == 'Llmpromptresponsecreation':
+        media_type = 'LLMPromptResponseCreation'
+    elif media_type == 'Llmresponsecreation':
+        media_type = 'Text'
     project.update(media_type=MediaType[media_type])
 
 
 @pytest.mark.parametrize('data_type_class', [
     AudioData, HTMLData, ImageData, TextData, VideoData, ConversationData,
-    DocumentData, DicomData
+    DocumentData, DicomData, LlmPromptCreationData,
+    LlmPromptResponseCreationData, LlmResponseCreationData
 ])
 def test_import_data_types_v2(client, configured_project, initial_dataset,
                               data_row_json_by_data_type,

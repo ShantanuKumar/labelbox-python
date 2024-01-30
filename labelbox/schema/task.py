@@ -42,6 +42,7 @@ class Task(DbObject):
     result_url = Field.String("result_url", "result")
     errors_url = Field.String("errors_url", "errors")
     type = Field.String("type")
+    metadata = Field.Json("metadata")
     _user: Optional["User"] = None
 
     # Relationships
@@ -57,15 +58,20 @@ class Task(DbObject):
         for field in self.fields():
             setattr(self, field.name, getattr(tasks[0], field.name))
 
-    def wait_till_done(self, timeout_seconds: int = 300) -> None:
+    def wait_till_done(self,
+                       timeout_seconds: float = 300.0,
+                       check_frequency: float = 2.0) -> None:
         """ Waits until the task is completed. Periodically queries the server
-        to update the task attributes.
+            to update the task attributes.
 
-        Args:
-            timeout_seconds (float): Maximum time this method can block, in seconds. Defaults to one minute.
-        """
-        check_frequency = 2  # frequency of checking, in seconds
-        while True:
+            Args:
+                timeout_seconds (float): Maximum time this method can block, in seconds. Defaults to five minutes.
+                check_frequency (float): Frequency of queries to server to update the task attributes, in seconds. Defaults to two seconds. Minimal value is two seconds. 
+            """
+        if check_frequency < 2.0:
+            raise ValueError(
+                "Expected check frequency to be two seconds or more")
+        while timeout_seconds > 0:
             if self.status != "IN_PROGRESS":
                 # self.errors fetches the error content.
                 # This first condition prevents us from downloading the content for v2 exports
@@ -74,13 +80,10 @@ class Task(DbObject):
                         "There are errors present. Please look at `task.errors` for more details"
                     )
                 return
-            sleep_time_seconds = min(check_frequency, timeout_seconds)
-            logger.debug("Task.wait_till_done sleeping for %.2f seconds" %
-                         sleep_time_seconds)
-            if sleep_time_seconds <= 0:
-                break
+            logger.debug("Task.wait_till_done sleeping for %d seconds",
+                         check_frequency)
+            time.sleep(check_frequency)
             timeout_seconds -= check_frequency
-            time.sleep(sleep_time_seconds)
             self.refresh()
 
     @property
@@ -95,7 +98,9 @@ class Task(DbObject):
                 return self.failed_data_rows
         elif self.type == "export-data-rows":
             return self._fetch_remote_json(remote_json_field='errors_url')
-        elif self.type == "add-data-rows-to-batch" or self.type == "send-to-task-queue":
+        elif (self.type == "add-data-rows-to-batch" or
+              self.type == "send-to-task-queue" or
+              self.type == "send-to-annotate"):
             if self.status == "FAILED":
                 # for these tasks, the error is embedded in the result itself
                 return json.loads(self.result_url)

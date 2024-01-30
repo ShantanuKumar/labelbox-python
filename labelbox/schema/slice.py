@@ -1,11 +1,13 @@
-from typing import Optional, List
-from labelbox.exceptions import ResourceNotFoundError
-from labelbox.orm.db_object import DbObject
-from labelbox.orm.model import Entity, Field
+from dataclasses import dataclass
+from typing import Optional
+import warnings
+from labelbox.orm.db_object import DbObject, experimental
+from labelbox.orm.model import Field
 from labelbox.pagination import PaginatedCollection
 from labelbox.schema.export_params import CatalogExportParams, validate_catalog_export_params
+from labelbox.schema.export_task import ExportTask
+from labelbox.schema.identifiable import GlobalKey, UniqueId
 from labelbox.schema.task import Task
-from labelbox.schema.user import User
 
 
 class Slice(DbObject):
@@ -27,6 +29,21 @@ class Slice(DbObject):
     updated_at = Field.DateTime("updated_at")
     filter = Field.Json("filter")
 
+    @dataclass
+    class DataRowIdAndGlobalKey:
+        id: UniqueId
+        global_key: Optional[GlobalKey]
+
+        def __init__(self, id: str, global_key: Optional[str]):
+            self.id = UniqueId(id)
+            self.global_key = GlobalKey(global_key) if global_key else None
+
+        def to_hash(self):
+            return {
+                "id": self.id.key,
+                "global_key": self.global_key.key if self.global_key else None
+            }
+
 
 class CatalogSlice(Slice):
     """
@@ -38,8 +55,13 @@ class CatalogSlice(Slice):
         Fetches all data row ids that match this Slice
 
         Returns:
-            A PaginatedCollection of data row ids
+            A PaginatedCollection of mapping of data row ids to global keys
         """
+
+        warnings.warn(
+            "get_data_row_ids will be deprecated. Use get_data_row_identifiers instead"
+        )
+
         query_str = """
             query getDataRowIdsBySavedQueryPyApi($id: ID!, $from: String, $first: Int!) {
                 getDataRowIdsBySavedQuery(input: {
@@ -59,14 +81,71 @@ class CatalogSlice(Slice):
         return PaginatedCollection(
             client=self.client,
             query=query_str,
-            params={'id': self.uid},
+            params={'id': str(self.uid)},
             dereferencing=['getDataRowIdsBySavedQuery', 'nodes'],
             obj_class=lambda _, data_row_id: data_row_id,
             cursor_path=['getDataRowIdsBySavedQuery', 'pageInfo', 'endCursor'])
 
-    def export_v2(self,
-                  task_name: Optional[str] = None,
-                  params: Optional[CatalogExportParams] = None) -> Task:
+    def get_data_row_identifiers(self) -> PaginatedCollection:
+        """
+        Fetches all data row ids and global keys (where defined) that match this Slice
+
+        Returns:
+            A PaginatedCollection of Slice.DataRowIdAndGlobalKey
+        """
+        query_str = """
+            query getDataRowIdenfifiersBySavedQueryPyApi($id: ID!, $from: String, $first: Int!) {
+                getDataRowIdentifiersBySavedQuery(input: {
+                    savedQueryId: $id,
+                    after: $from
+                    first: $first
+                }) {
+                    totalCount
+                    nodes
+                    {
+                        id
+                        globalKey
+                    }
+                    pageInfo {
+                        endCursor
+                        hasNextPage
+                    }
+                }
+            }
+        """
+        return PaginatedCollection(
+            client=self.client,
+            query=query_str,
+            params={'id': str(self.uid)},
+            dereferencing=['getDataRowIdentifiersBySavedQuery', 'nodes'],
+            obj_class=lambda _, data_row_id_and_gk: Slice.DataRowIdAndGlobalKey(
+                data_row_id_and_gk.get('id'),
+                data_row_id_and_gk.get('globalKey', None)),
+            cursor_path=[
+                'getDataRowIdentifiersBySavedQuery', 'pageInfo', 'endCursor'
+            ])
+
+    @experimental
+    def export(self,
+               task_name: Optional[str] = None,
+               params: Optional[CatalogExportParams] = None) -> ExportTask:
+        """
+        Creates a slice export task with the given params and returns the task.
+        >>>     slice = client.get_catalog_slice("SLICE_ID")
+        >>>     task = slice.export(
+        >>>         params={"performance_details": False, "label_details": True}
+        >>>     )
+        >>>     task.wait_till_done()
+        >>>     task.result
+        """
+        task = self._export(task_name, params, streamable=True)
+        return ExportTask(task)
+
+    def export_v2(
+        self,
+        task_name: Optional[str] = None,
+        params: Optional[CatalogExportParams] = None,
+    ) -> Task:
         """
         Creates a slice export task with the given params and returns the task.
         >>>     slice = client.get_catalog_slice("SLICE_ID")
@@ -76,7 +155,14 @@ class CatalogSlice(Slice):
         >>>     task.wait_till_done()
         >>>     task.result
         """
+        return self._export(task_name, params)
 
+    def _export(
+        self,
+        task_name: Optional[str] = None,
+        params: Optional[CatalogExportParams] = None,
+        streamable: bool = False,
+    ) -> Task:
         _params = params or CatalogExportParams({
             "attachments": False,
             "metadata_fields": False,
@@ -88,13 +174,16 @@ class CatalogSlice(Slice):
             "model_run_ids": None,
             "project_ids": None,
             "interpolated_frames": False,
+            "all_projects": False,
+            "all_model_runs": False,
         })
         validate_catalog_export_params(_params)
 
         mutation_name = "exportDataRowsInSlice"
-        create_task_query_str = """mutation exportDataRowsInSlicePyApi($input: ExportDataRowsInSliceInput!){
-          %s(input: $input) {taskId} }
-          """ % (mutation_name)
+        create_task_query_str = (
+            f"mutation {mutation_name}PyApi"
+            f"($input: ExportDataRowsInSliceInput!)"
+            f"{{{mutation_name}(input: $input){{taskId}}}}")
 
         media_type_override = _params.get('media_type_override', None)
         query_params = {
@@ -125,7 +214,12 @@ class CatalogSlice(Slice):
                         _params.get('project_ids', None),
                     "modelRunIds":
                         _params.get('model_run_ids', None),
+                    "allProjects":
+                        _params.get('all_projects', False),
+                    "allModelRuns":
+                        _params.get('all_model_runs', False),
                 },
+                "streamable": streamable,
             }
         }
 
@@ -134,17 +228,7 @@ class CatalogSlice(Slice):
                                   error_log_key="errors")
         res = res[mutation_name]
         task_id = res["taskId"]
-        user: User = self.client.get_user()
-        tasks: List[Task] = list(
-            user.created_tasks(where=Entity.Task.uid == task_id))
-        # Cache user in a private variable as the relationship can't be
-        # resolved due to server-side limitations (see Task.created_by)
-        # for more info.
-        if len(tasks) != 1:
-            raise ResourceNotFoundError(Entity.Task, task_id)
-        task: Task = tasks[0]
-        task._user = user
-        return task
+        return Task.get_task(self.client, task_id)
 
 
 class ModelSlice(Slice):
@@ -152,33 +236,82 @@ class ModelSlice(Slice):
     Represents a Slice used for filtering data rows in Model.
     """
 
-    def get_data_row_ids(self) -> PaginatedCollection:
+    @classmethod
+    def query_str(cls):
+        query_str = """
+        query getDataRowIdenfifiersBySavedModelQueryPyApi($id: ID!, $modelRunId: ID, $from: DataRowIdentifierCursorInput, $first: Int!) {
+            getDataRowIdentifiersBySavedModelQuery(input: {
+                savedQueryId: $id,
+                modelRunId: $modelRunId,
+                after: $from
+                first: $first
+            }) {
+                totalCount
+                nodes
+                {
+                    id
+                    globalKey
+                }
+                pageInfo {
+                    endCursor {
+                        dataRowId
+                        globalKey
+                    }
+                    hasNextPage
+                }
+            }
+        }
+        """
+        return query_str
+
+    def get_data_row_ids(self, model_run_id: str) -> PaginatedCollection:
         """
         Fetches all data row ids that match this Slice
+
+        Params
+        model_run_id: str, required, uid or cuid of model run
 
         Returns:
             A PaginatedCollection of data row ids
         """
-        query_str = """
-            query getDataRowIdsBySavedQueryPyApi($id: ID!, $from: String, $first: Int!) {
-                getDataRowIdsBySavedQuery(input: {
-                    savedQueryId: $id,
-                    after: $from
-                    first: $first
-                }) {
-                    totalCount
-                    nodes
-                    pageInfo {
-                        endCursor
-                        hasNextPage
-                    }
-                }
-            }
+        return PaginatedCollection(
+            client=self.client,
+            query=ModelSlice.query_str(),
+            params={
+                'id': str(self.uid),
+                'modelRunId': model_run_id
+            },
+            dereferencing=['getDataRowIdentifiersBySavedModelQuery', 'nodes'],
+            obj_class=lambda _, data_row_id_and_gk: data_row_id_and_gk.get('id'
+                                                                          ),
+            cursor_path=[
+                'getDataRowIdentifiersBySavedModelQuery', 'pageInfo',
+                'endCursor'
+            ])
+
+    def get_data_row_identifiers(self,
+                                 model_run_id: str) -> PaginatedCollection:
+        """
+        Fetches all data row ids and global keys (where defined) that match this Slice
+
+        Params:
+        model_run_id : str, required, uid or cuid of model run
+
+        Returns:
+            A PaginatedCollection of Slice.DataRowIdAndGlobalKey
         """
         return PaginatedCollection(
             client=self.client,
-            query=query_str,
-            params={'id': self.uid},
-            dereferencing=['getDataRowIdsBySavedQuery', 'nodes'],
-            obj_class=lambda _, data_row_id: data_row_id,
-            cursor_path=['getDataRowIdsBySavedQuery', 'pageInfo', 'endCursor'])
+            query=ModelSlice.query_str(),
+            params={
+                'id': str(self.uid),
+                'modelRunId': model_run_id
+            },
+            dereferencing=['getDataRowIdentifiersBySavedModelQuery', 'nodes'],
+            obj_class=lambda _, data_row_id_and_gk: Slice.DataRowIdAndGlobalKey(
+                data_row_id_and_gk.get('id'),
+                data_row_id_and_gk.get('globalKey', None)),
+            cursor_path=[
+                'getDataRowIdentifiersBySavedModelQuery', 'pageInfo',
+                'endCursor'
+            ])

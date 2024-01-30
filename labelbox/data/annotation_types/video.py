@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional, Tuple
 
-from pydantic.v1 import BaseModel, validator
+from pydantic.v1 import BaseModel, validator, root_validator
 from labelbox.data.annotation_types.annotation import (
     ClassificationAnnotation,
     ObjectAnnotation,
@@ -97,7 +97,17 @@ class DICOMObjectAnnotation(VideoObjectAnnotation):
 
 class MaskFrame(_CamelCaseMixin, BaseModel):
     index: int
-    instance_uri: str
+    instance_uri: Optional[str] = None
+    im_bytes: Optional[bytes] = None
+
+    @root_validator()
+    def validate_args(cls, values):
+        im_bytes = values.get("im_bytes")
+        instance_uri = values.get("instance_uri")
+
+        if im_bytes == instance_uri == None:
+            raise ValueError("One of `instance_uri`, `im_bytes` required.")
+        return values
 
     @validator("instance_uri")
     def validate_uri(cls, v):

@@ -1,5 +1,85 @@
 # Changelog
 
+# Version 3.61.2 (2024-01-29)
+## Added 
+* `ModelSlice.get_data_row_identifiers` for Foundry data rows
+
+## Fixed
+* `ModelSlice.get_data_row_identifiers` scoping by model run id
+
+# Version 3.61.1 (2024-01-25)
+## Fixed
+* Removed export API limit (5000)
+
+# Version 3.61.0 (2024-01-22)
+# Added
+* `ModelSlice.get_data_row_identifiers`
+  * Fetches all data row ids and global keys for the model slice
+  * NOTE Foundry model slices are note supported yet
+## Updated
+* Updated exports v1 deprecation date to April 30th, 2024
+* Remove `streamable` param from export_v2 methods
+
+# Version 3.60.0 (2024-01-17)
+## Added
+* Get resource tags from a project
+* Method to CatalogSlice to get data row identifiers (both uids and global keys)
+* Added deprecation notice for the `upsert_review_queue` method in project
+## Notebooks
+* Update notebook for Project move_data_rows_to_task_queue
+* Added notebook for model foundry
+* Added notebook for migrating from Exports V1 to V2
+
+# Version 3.59.0 (2024-01-05)
+## Added
+* Support set_labeling_parameter_overrides for global keys 
+* Support bulk_delete of data row metadata for global keys
+* Support bulk_export of data row metadata for global keys
+## Fixed
+* Stop overwriting class annotations on prediction upload
+* Prevent users from uploading video annotations over the API limit (5000)
+* Make description optional for foundry app
+## Notebooks
+* Update notebooks for Project set_labeling_parameter_overrides add support for global keys
+
+# Version 3.58.1 (2023-12-15)
+## Added
+* Support to export all projects and all model runs to `export_v2` for a `dataset` and a `slice`
+## Notebooks
+* Update exports v2 notebook to include methods that return `ExportTask`
+
+# Version 3.58.0 (2023-12-11)
+## Added
+* `ontology_id` to the model app instantiation
+* LLM data generation label types
+* `run_foundry_app` to support running model foundry apps
+* Two methods for sending data rows to any workflow task in a project, that can also include predictions from a model run, or annotations from a different project
+## Fixed
+* Documentation index for identifiables
+## Removed
+* Project.datasets and Datasets.projects methods as they have been deprecated
+## Notebooks
+* Added note books for Human labeling(GT/MAL/MEA) + data generation (GT/MAL)
+* Remove relationship annotations from text and conversational imports
+
+# Version 3.57.0 (2023-11-30)
+## Added
+* Global key support for Project move_data_rows_to_task_queue
+* Project name required for project creation
+## Notebooks
+* Updates to Image and Video notebook format
+* Added additional byte array examples for Image/Video import and Image prediction import notebook
+* Added a new LLM folder for new LLM import (MAL/MEA/Ground truth)
+
+# Version 3.56.0 (2023-11-21)
+## Added
+* Support for importing raster video masks from image bytes as a source
+* Add new ExportTask class to handle streaming of exports
+## Fixed
+* Check for empty fields during webhook creation
+## Notebooks
+* Updates to use bytes array for masks (video, image), and add examples of multiple notations per frame (video)
+
 # Version 3.55.0 (2023-11-06)
 ## Fixed
 * Fix the instantiation of `failed_data_row_ids` in Batch. This fix will address the issue with the `create_batch` method for more than 1,000 data rows.

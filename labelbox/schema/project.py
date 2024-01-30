@@ -1,22 +1,26 @@
 import json
 import logging
+from string import Template
 import time
 import warnings
 from collections import namedtuple
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union, overload
 from urllib.parse import urlparse
 
 import requests
 
 from labelbox import parser
 from labelbox import utils
-from labelbox.exceptions import (InvalidQueryError, LabelboxError,
-                                 ProcessingWaitTimeout, ResourceConflict,
-                                 ResourceNotFoundError)
+from labelbox.exceptions import (
+    InvalidQueryError,
+    LabelboxError,
+    ProcessingWaitTimeout,
+    ResourceConflict,
+)
 from labelbox.orm import query
-from labelbox.orm.db_object import DbObject, Deletable, Updateable
+from labelbox.orm.db_object import DbObject, Deletable, Updateable, experimental
 from labelbox.orm.model import Entity, Field, Relationship
 from labelbox.pagination import PaginatedCollection
 from labelbox.schema.consensus_settings import ConsensusSettings
@@ -24,29 +28,54 @@ from labelbox.schema.create_batches_task import CreateBatchesTask
 from labelbox.schema.data_row import DataRow
 from labelbox.schema.export_filters import ProjectExportFilters, validate_datetime, build_filters
 from labelbox.schema.export_params import ProjectExportParams
+from labelbox.schema.export_task import ExportTask
+from labelbox.schema.id_type import IdType
+from labelbox.schema.identifiable import DataRowIdentifier, GlobalKey, UniqueId
+from labelbox.schema.identifiables import DataRowIdentifiers, UniqueIds
 from labelbox.schema.media_type import MediaType
 from labelbox.schema.queue_mode import QueueMode
 from labelbox.schema.resource_tag import ResourceTag
 from labelbox.schema.task import Task
 from labelbox.schema.task_queue import TaskQueue
-from labelbox.schema.user import User
 
 if TYPE_CHECKING:
     from labelbox import BulkImportRequest
-
-try:
-    datetime.fromisoformat  # type: ignore[attr-defined]
-except AttributeError:
-    from backports.datetime_fromisoformat import MonkeyPatch
-
-    MonkeyPatch.patch_fromisoformat()
 
 try:
     from labelbox.data.serialization import LBV1Converter
 except ImportError:
     pass
 
+DataRowPriority = int
+LabelingParameterOverrideInput = Tuple[Union[DataRow, DataRowIdentifier],
+                                       DataRowPriority]
+
 logger = logging.getLogger(__name__)
+
+
+def validate_labeling_parameter_overrides(
+        data: List[LabelingParameterOverrideInput]) -> None:
+    for idx, row in enumerate(data):
+        if len(row) < 2:
+            raise TypeError(
+                f"Data must be a list of tuples each containing two elements: a DataRow or a DataRowIdentifier and priority (int). Found {len(row)} items. Index: {idx}"
+            )
+        data_row_identifier = row[0]
+        priority = row[1]
+        valid_types = (Entity.DataRow, UniqueId, GlobalKey)
+        if not isinstance(data_row_identifier, valid_types):
+            raise TypeError(
+                f"Data row identifier should be be of type DataRow, UniqueId or GlobalKey. Found {type(data_row_identifier)} for data_row_identifier {data_row_identifier}"
+            )
+
+        if not isinstance(priority, int):
+            if isinstance(data_row_identifier, Entity.DataRow):
+                id = data_row_identifier.uid
+            else:
+                id = data_row_identifier
+            raise TypeError(
+                f"Priority must be an int. Found {type(priority)} for data_row_identifier {id}"
+            )
 
 
 class Project(DbObject, Updateable, Deletable):
@@ -64,7 +93,6 @@ class Project(DbObject, Updateable, Deletable):
         auto_audit_number_of_labels (int)
         auto_audit_percentage (float)
 
-        datasets (Relationship): `ToMany` relationship to Dataset
         created_by (Relationship): `ToOne` relationship to User
         organization (Relationship): `ToOne` relationship to Organization
         labeling_frontend (Relationship): `ToOne` relationship to LabelingFrontend
@@ -89,12 +117,6 @@ class Project(DbObject, Updateable, Deletable):
     media_type = Field.Enum(MediaType, "media_type", "allowedMediaType")
 
     # Relationships
-    datasets = Relationship.ToMany(
-        "Dataset",
-        True,
-        deprecation_warning=
-        "This method does not return any data for batch-based projects and it will be deprecated on or around November 1, 2023."
-    )
     created_by = Relationship.ToOne("User", False, "created_by")
     organization = Relationship.ToOne("Organization", False)
     labeling_frontend = Relationship.ToOne("LabelingFrontend")
@@ -184,6 +206,22 @@ class Project(DbObject, Updateable, Deletable):
             for tag in res["project"]["updateProjectResourceTags"]
         ]
 
+    def get_resource_tags(self) -> List[ResourceTag]:
+        """
+        Returns tags for a project
+        """
+        query_str = """query GetProjectResourceTagsPyApi($projectId: ID!) {
+            project(where: {id: $projectId}) {
+                name
+                resourceTags {%s}
+            }
+            }""" % (query.results_query_part(ResourceTag))
+
+        results = self.client.execute(
+            query_str, {"projectId": self.uid})['project']['resourceTags']
+
+        return [ResourceTag(self.client, tag) for tag in results]
+
     def labels(self, datasets=None, order_by=None) -> PaginatedCollection:
         """ Custom relationship expansion method to support limited filtering.
 
@@ -233,7 +271,7 @@ class Project(DbObject, Updateable, Deletable):
             LabelboxError: if the export fails or is unable to download within the specified time.
         """
         warnings.warn(
-            "You are currently utilizing exports v1 for this action, which will be deprecated after December 31st, 2023. We recommend transitioning to exports v2. To view export v2 details, visit our docs: https://docs.labelbox.com/reference/label-export",
+            "You are currently utilizing exports v1 for this action, which will be deprecated after April 30th, 2024. We recommend transitioning to exports v2. To view export v2 details, visit our docs: https://docs.labelbox.com/reference/label-export",
             DeprecationWarning)
         id_param = "projectId"
         metadata_param = "includeMetadataInput"
@@ -339,7 +377,7 @@ class Project(DbObject, Updateable, Deletable):
             generate during the `timeout_seconds` period, None is returned.
         """
         warnings.warn(
-            "You are currently utilizing exports v1 for this action, which will be deprecated after December 31st, 2023. We recommend transitioning to exports v2. To view export v2 details, visit our docs: https://docs.labelbox.com/reference/label-export",
+            "You are currently utilizing exports v1 for this action, which will be deprecated after April 30th, 2024. We recommend transitioning to exports v2. To view export v2 details, visit our docs: https://docs.labelbox.com/reference/label-export",
             DeprecationWarning)
 
         def _string_from_dict(dictionary: dict, value_with_quotes=False) -> str:
@@ -415,10 +453,39 @@ class Project(DbObject, Updateable, Deletable):
                          self.uid)
             time.sleep(sleep_time)
 
-    def export_v2(self,
-                  task_name: Optional[str] = None,
-                  filters: Optional[ProjectExportFilters] = None,
-                  params: Optional[ProjectExportParams] = None) -> Task:
+    @experimental
+    def export(
+        self,
+        task_name: Optional[str] = None,
+        filters: Optional[ProjectExportFilters] = None,
+        params: Optional[ProjectExportParams] = None,
+    ) -> ExportTask:
+        """
+        Creates a project export task with the given params and returns the task.
+
+        >>>     task = project.export(
+        >>>         filters={
+        >>>             "last_activity_at": ["2000-01-01 00:00:00", "2050-01-01 00:00:00"],
+        >>>             "label_created_at": ["2000-01-01 00:00:00", "2050-01-01 00:00:00"],
+        >>>             "data_row_ids": [DATA_ROW_ID_1, DATA_ROW_ID_2, ...] # or global_keys: [DATA_ROW_GLOBAL_KEY_1, DATA_ROW_GLOBAL_KEY_2, ...]
+        >>>             "batch_ids": [BATCH_ID_1, BATCH_ID_2, ...]
+        >>>         },
+        >>>         params={
+        >>>             "performance_details": False,
+        >>>             "label_details": True
+        >>>         })
+        >>>     task.wait_till_done()
+        >>>     task.result
+        """
+        task = self._export(task_name, filters, params, streamable=True)
+        return ExportTask(task)
+
+    def export_v2(
+        self,
+        task_name: Optional[str] = None,
+        filters: Optional[ProjectExportFilters] = None,
+        params: Optional[ProjectExportParams] = None,
+    ) -> Task:
         """
         Creates a project export task with the given params and returns the task.
 
@@ -438,7 +505,15 @@ class Project(DbObject, Updateable, Deletable):
         >>>     task.wait_till_done()
         >>>     task.result
         """
+        return self._export(task_name, filters, params)
 
+    def _export(
+        self,
+        task_name: Optional[str] = None,
+        filters: Optional[ProjectExportFilters] = None,
+        params: Optional[ProjectExportParams] = None,
+        streamable: bool = False,
+    ) -> Task:
         _params = params or ProjectExportParams({
             "attachments": False,
             "metadata_fields": False,
@@ -460,9 +535,10 @@ class Project(DbObject, Updateable, Deletable):
         })
 
         mutation_name = "exportDataRowsInProject"
-        create_task_query_str = """mutation exportDataRowsInProjectPyApi($input: ExportDataRowsInProjectInput!){
-          %s(input: $input) {taskId} }
-          """ % (mutation_name)
+        create_task_query_str = (
+            f"mutation {mutation_name}PyApi"
+            f"($input: ExportDataRowsInProjectInput!)"
+            f"{{{mutation_name}(input: $input){{taskId}}}}")
 
         media_type_override = _params.get('media_type_override', None)
         query_params: Dict[str, Any] = {
@@ -494,6 +570,7 @@ class Project(DbObject, Updateable, Deletable):
                     "includeInterpolatedFrames":
                         _params.get('interpolated_frames', False),
                 },
+                "streamable": streamable,
             }
         }
 
@@ -505,17 +582,7 @@ class Project(DbObject, Updateable, Deletable):
                                   error_log_key="errors")
         res = res[mutation_name]
         task_id = res["taskId"]
-        user: User = self.client.get_user()
-        tasks: List[Task] = list(
-            user.created_tasks(where=Entity.Task.uid == task_id))
-        # Cache user in a private variable as the relationship can't be
-        # resolved due to server-side limitations (see Task.created_by)
-        # for more info.
-        if len(tasks) != 1:
-            raise ResourceNotFoundError(Entity.Task, task_id)
-        task: Task = tasks[0]
-        task._user = user
-        return task
+        return Task.get_task(self.client, task_id)
 
     def export_issues(self, status=None) -> str:
         """ Calls the server-side Issues exporting that
@@ -620,7 +687,7 @@ class Project(DbObject, Updateable, Deletable):
         def create_labeler_performance(client, result):
             result["user"] = Entity.User(client, result["user"])
             # python isoformat doesn't accept Z as utc timezone
-            result["lastActivityTime"] = datetime.fromisoformat(
+            result["lastActivityTime"] = utils.format_iso_from_string(
                 result["lastActivityTime"].replace('Z', '+00:00'))
             return LabelerPerformance(**{
                 utils.snake_case(key): value for key, value in result.items()
@@ -1082,6 +1149,20 @@ class Project(DbObject, Updateable, Deletable):
 
         return mode
 
+    def get_label_count(self) -> int:
+        """
+        Returns: the total number of labels in this project.
+        """
+
+        query_str = """query LabelCountPyApi($projectId: ID!) {
+            project(where: {id: $projectId}) {
+                labelCount
+            }
+        }"""
+
+        res = self.client.execute(query_str, {'projectId': self.uid})
+        return res["project"]["labelCount"]
+
     def get_queue_mode(self) -> "QueueMode":
         """
         Provides the queue mode used for this project.
@@ -1117,36 +1198,25 @@ class Project(DbObject, Updateable, Deletable):
         else:
             raise ValueError("Status not known")
 
-    def validate_labeling_parameter_overrides(self, data) -> None:
-        for idx, row in enumerate(data):
-            if len(row) < 2:
-                raise TypeError(
-                    f"Data must be a list of tuples containing a DataRow and priority (int). Found {len(row)} items. Index: {idx}"
-                )
-            data_row = row[0]
-            priority = row[1]
-            if not isinstance(data_row, Entity.DataRow):
-                raise TypeError(
-                    f"data_row should be be of type DataRow. Found {type(data_row)}. Index: {idx}"
-                )
-
-            if not isinstance(priority, int):
-                raise TypeError(
-                    f"Priority must be an int. Found {type(priority)} for data_row {data_row}. Index: {idx}"
-                )
-
-    def set_labeling_parameter_overrides(self, data) -> bool:
+    def set_labeling_parameter_overrides(
+            self, data: List[LabelingParameterOverrideInput]) -> bool:
         """ Adds labeling parameter overrides to this project.
 
         See information on priority here:
             https://docs.labelbox.com/en/configure-editor/queue-system#reservation-system
 
             >>> project.set_labeling_parameter_overrides([
-            >>>     (data_row_1, 2), (data_row_2, 1)])
+            >>>     (data_row_id1, 2), (data_row_id2, 1)])
+            or
+            >>> project.set_labeling_parameter_overrides([
+            >>>     (data_row_gk1, 2), (data_row_gk2, 1)])
 
         Args:
             data (iterable): An iterable of tuples. Each tuple must contain
-                (DataRow, priority<int>) for the new override.
+                either (DataRow, DataRowPriority<int>)
+                or (DataRowIdentifier, priority<int>) for the new override.
+                DataRowIdentifier is an object representing a data row id or a global key. A DataIdentifier object can be a UniqueIds or GlobalKeys class.
+                NOTE - passing whole DatRow is deprecated. Please use a DataRowIdentifier instead.
 
                 Priority:
                     * Data will be labeled in priority order.
@@ -1162,20 +1232,52 @@ class Project(DbObject, Updateable, Deletable):
             bool, indicates if the operation was a success.
         """
         data = [t[:2] for t in data]
-        self.validate_labeling_parameter_overrides(data)
-        data_str = ",\n".join("{dataRow: {id: \"%s\"}, priority: %d }" %
-                              (data_row.uid, priority)
-                              for data_row, priority in data)
-        id_param = "projectId"
-        query_str = """mutation SetLabelingParameterOverridesPyApi($%s: ID!){
-            project(where: { id: $%s }) {setLabelingParameterOverrides
-            (data: [%s]) {success}}} """ % (id_param, id_param, data_str)
-        res = self.client.execute(query_str, {id_param: self.uid})
+        validate_labeling_parameter_overrides(data)
+
+        template = Template(
+            """mutation SetLabelingParameterOverridesPyApi($$projectId: ID!)
+                {project(where: { id: $$projectId })
+                {setLabelingParameterOverrides
+                (dataWithDataRowIdentifiers: [$dataWithDataRowIdentifiers]) 
+                {success}}}
+            """)
+
+        data_rows_with_identifiers = ""
+        for data_row, priority in data:
+            if isinstance(data_row, DataRow):
+                data_rows_with_identifiers += f"{{dataRowIdentifier: {{id: \"{data_row.uid}\", idType: {IdType.DataRowId}}}, priority: {priority}}},"
+            elif isinstance(data_row, UniqueId) or isinstance(
+                    data_row, GlobalKey):
+                data_rows_with_identifiers += f"{{dataRowIdentifier: {{id: \"{data_row.key}\", idType: {data_row.id_type}}}, priority: {priority}}},"
+            else:
+                raise TypeError(
+                    f"Data row identifier should be be of type DataRow or Data Row Identifier. Found {type(data_row)}."
+                )
+
+        query_str = template.substitute(
+            dataWithDataRowIdentifiers=data_rows_with_identifiers)
+        res = self.client.execute(query_str, {"projectId": self.uid})
         return res["project"]["setLabelingParameterOverrides"]["success"]
 
+    @overload
+    def update_data_row_labeling_priority(
+        self,
+        data_rows: DataRowIdentifiers,
+        priority: int,
+    ) -> bool:
+        pass
+
+    @overload
     def update_data_row_labeling_priority(
         self,
         data_rows: List[str],
+        priority: int,
+    ) -> bool:
+        pass
+
+    def update_data_row_labeling_priority(
+        self,
+        data_rows,
         priority: int,
     ) -> bool:
         """
@@ -1186,25 +1288,31 @@ class Project(DbObject, Updateable, Deletable):
             https://docs.labelbox.com/en/configure-editor/queue-system#reservation-system
 
         Args:
-            data_rows (iterable): An iterable of data row ids.
+            data_rows: a list of data row ids to update priorities for. This can be a list of strings or a DataRowIdentifiers object 
+                DataRowIdentifier objects are lists of ids or global keys. A DataIdentifier object can be a UniqueIds or GlobalKeys class.
             priority (int): Priority for the new override. See above for more information.
 
         Returns:
             bool, indicates if the operation was a success.
         """
 
+        if isinstance(data_rows, list):
+            data_rows = UniqueIds(data_rows)
+            warnings.warn("Using data row ids will be deprecated. Please use "
+                          "UniqueIds or GlobalKeys instead.")
+
         method = "createQueuePriorityUpdateTask"
         priority_param = "priority"
         project_param = "projectId"
-        data_rows_param = "dataRowIds"
+        data_rows_param = "dataRowIdentifiers"
         query_str = """mutation %sPyApi(
               $%s: Int!
               $%s: ID!
-              $%s: [ID!]
+              $%s: QueuePriorityUpdateDataRowIdentifiersInput
             ) {
               project(where: { id: $%s }) {
                 %s(
-                  data: { priority: $%s, dataRowIds: $%s }
+                  data: { priority: $%s, dataRowIdentifiers: $%s }
                 ) {
                   taskId
                 }
@@ -1216,7 +1324,10 @@ class Project(DbObject, Updateable, Deletable):
             query_str, {
                 priority_param: priority,
                 project_param: self.uid,
-                data_rows_param: data_rows
+                data_rows_param: {
+                    "ids": [id for id in data_rows],
+                    "idType": data_rows.id_type,
+                },
             })["project"][method]
 
         task_id = res['taskId']
@@ -1228,7 +1339,11 @@ class Project(DbObject, Updateable, Deletable):
         return True
 
     def upsert_review_queue(self, quota_factor) -> None:
-        """ Sets the the proportion of total assets in a project to review.
+        """ Sets the proportion of total assets in a project to review.
+
+        Deprecation notice: This method is deprecated and will be removed in a future version. The review step was
+        replaced by Workflows in order to offer more flexibility in customizing the review flow for labeling tasks.
+        Read more on Workflows here: https://docs.labelbox.com/docs/workflows
 
         More information can be found here:
             https://docs.labelbox.com/en/quality-assurance/review-labels#configure-review-percentage
@@ -1237,6 +1352,8 @@ class Project(DbObject, Updateable, Deletable):
             quota_factor (float): Which part (percentage) of the queue
                 to reinitiate. Between 0 and 1.
         """
+
+        logger.warning("Updating the review queue is no longer supported.")
 
         if not 0. <= quota_factor <= 1.:
             raise ValueError("Quota factor must be in the range of [0,1]")
@@ -1359,29 +1476,44 @@ class Project(DbObject, Updateable, Deletable):
             for field_values in task_queue_values
         ]
 
+    @overload
+    def move_data_rows_to_task_queue(self, data_row_ids: DataRowIdentifiers,
+                                     task_queue_id: str):
+        pass
+
+    @overload
     def move_data_rows_to_task_queue(self, data_row_ids: List[str],
                                      task_queue_id: str):
+        pass
+
+    def move_data_rows_to_task_queue(self, data_row_ids, task_queue_id: str):
         """
 
         Moves data rows to the specified task queue.
 
         Args:
-            data_row_ids: a list of data row ids to be moved
+            data_row_ids: a list of data row ids to be moved. This can be a list of strings or a DataRowIdentifiers object 
+                DataRowIdentifier objects are lists of ids or global keys. A DataIdentifier object can be a UniqueIds or GlobalKeys class.
             task_queue_id: the task queue id to be moved to, or None to specify the "Done" queue
 
         Returns:
             None if successful, or a raised error on failure
 
         """
+        if isinstance(data_row_ids, list):
+            data_row_ids = UniqueIds(data_row_ids)
+            warnings.warn("Using data row ids will be deprecated. Please use "
+                          "UniqueIds or GlobalKeys instead.")
+
         method = "createBulkAddRowsToQueueTask"
         query_str = """mutation AddDataRowsToTaskQueueAsyncPyApi(
           $projectId: ID!
           $queueId: ID
-          $dataRowIds: [ID!]!
+          $dataRowIdentifiers: AddRowsToTaskQueueViaDataRowIdentifiersInput!
         ) {
           project(where: { id: $projectId }) {
             %s(
-              data: { queueId: $queueId, dataRowIds: $dataRowIds }
+              data: { queueId: $queueId, dataRowIdentifiers: $dataRowIdentifiers }
             ) {
               taskId
             }
@@ -1393,7 +1525,10 @@ class Project(DbObject, Updateable, Deletable):
             query_str, {
                 "projectId": self.uid,
                 "queueId": task_queue_id,
-                "dataRowIds": data_row_ids
+                "dataRowIdentifiers": {
+                    "ids": [id for id in data_row_ids],
+                    "idType": data_row_ids.id_type,
+                },
             },
             timeout=180.0,
             experimental=True)["project"][method]["taskId"]

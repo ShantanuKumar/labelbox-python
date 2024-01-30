@@ -20,6 +20,9 @@ from .data import (
     MaskData,
     TextData,
     VideoData,
+    LlmPromptCreationData,
+    LlmPromptResponseCreationData,
+    LlmResponseCreationData,
 )
 from .geometry import Mask
 from .metrics import ScalarMetric, ConfusionMatrixMetric
@@ -38,6 +41,9 @@ DataType = Union[
     DicomData,
     DocumentData,
     HTMLData,
+    LlmPromptCreationData,
+    LlmPromptResponseCreationData,
+    LlmResponseCreationData,
 ]
 
 

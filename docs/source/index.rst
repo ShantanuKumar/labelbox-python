@@ -2,7 +2,7 @@ Labelbox Python API reference
 ===================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
 Client
@@ -179,6 +179,7 @@ DataRowMetadata
 
 .. automodule:: labelbox.schema.data_row_metadata
    :members:
+   :exclude-members: _DeleteBatchDataRowMetadata
    :show-inheritance:
 
 AnnotationImport
@@ -202,23 +203,64 @@ ResourceTag
    :members:
    :show-inheritance:
 
+
 Slice
------------------------------------------
-
+---------------------------
 .. automodule:: labelbox.schema.slice
-   :members: Slice
-   :exclude-members: CatalogSlice
-   :show-inheritance:
-
-CatalogSlice
------------------------------------------
-.. automodule:: labelbox.schema.slice
-   :members: CatalogSlice
-   :exclude-members: Slice
+   :members:
    :show-inheritance:
 
 QualityMode
 -----------------------------------------
 .. automodule:: labelbox.schema.quality_mode
+   :members:
+   :show-inheritance:
+
+ExportTask
+---------------------------
+.. automodule:: labelbox.schema.export_task
+   :members:
+   :exclude-members: FileRetrieverByLine, FileRetrieverByOffset, FileRetrieverStrategy, Range, Converter
+   :show-inheritance:
+
+Identifiables
+---------------------------
+.. automodule:: labelbox.schema.identifiables
+   :members:
+   :show-inheritance:
+
+Identifiable
+---------------------------
+.. automodule:: labelbox.schema.identifiable
+   :members:
+   :show-inheritance:
+
+ConflictResolutionStrategy
+---------------------------
+.. automodule:: labelbox.schema.conflict_resolution_strategy
+   :members:
+   :show-inheritance:
+
+FoundryClient
+---------------------------
+.. automodule:: labelbox.schema.foundry.foundry_client
+   :members:
+   :show-inheritance:
+
+App
+---------------------------
+.. automodule:: labelbox.schema.foundry.app
+   :members:
+   :show-inheritance:
+
+FoundryModel
+---------------------------
+.. automodule:: labelbox.schema.foundry.model
+   :members:
+   :show-inheritance:
+
+SendToAnnotateParams
+---------------------------
+.. automodule:: labelbox.schema.send_to_annotate_params
    :members:
    :show-inheritance:

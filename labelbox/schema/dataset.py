@@ -17,7 +17,7 @@ import requests
 from labelbox import pagination
 from labelbox.exceptions import InvalidQueryError, LabelboxError, ResourceNotFoundError, InvalidAttributeError
 from labelbox.orm.comparison import Comparison
-from labelbox.orm.db_object import DbObject, Updateable, Deletable
+from labelbox.orm.db_object import DbObject, Updateable, Deletable, experimental
 from labelbox.orm.model import Entity, Field, Relationship
 from labelbox.orm import query
 from labelbox.exceptions import MalformedQueryException
@@ -25,6 +25,7 @@ from labelbox.pagination import PaginatedCollection
 from labelbox.schema.data_row import DataRow
 from labelbox.schema.export_filters import DatasetExportFilters, build_filters
 from labelbox.schema.export_params import CatalogExportParams, validate_catalog_export_params
+from labelbox.schema.export_task import ExportTask
 from labelbox.schema.task import Task
 from labelbox.schema.user import User
 
@@ -43,7 +44,6 @@ class Dataset(DbObject, Updateable, Deletable):
         created_at (datetime)
         row_count (int): The number of rows in the dataset. Fetch the dataset again to update since this is cached.
 
-        projects (Relationship): `ToMany` relationship to Project
         created_by (Relationship): `ToOne` relationship to User
         organization (Relationship): `ToOne` relationship to Organization
 
@@ -55,12 +55,6 @@ class Dataset(DbObject, Updateable, Deletable):
     row_count = Field.Int("row_count")
 
     # Relationships
-    projects = Relationship.ToMany(
-        "Project",
-        True,
-        deprecation_warning=
-        "This method does not return any data for batch-based projects and it will be deprecated on or around November 1, 2023."
-    )
     created_by = Relationship.ToOne("User", False, "created_by")
     organization = Relationship.ToOne("Organization", False)
     iam_integration = Relationship.ToOne("IAMIntegration", False,
@@ -74,10 +68,10 @@ class Dataset(DbObject, Updateable, Deletable):
         """ 
         Custom method to paginate data_rows via cursor.
 
-        Params:
+        Args:
             from_cursor (str): Cursor (data row id) to start from, if none, will start from the beginning
             where (dict(str,str)): Filter to apply to data rows. Where value is a data row column name and key is the value to filter on.    
-                example: {'external_id': 'my_external_id'} to get a data row with external_id = 'my_external_id'
+            example: {'external_id': 'my_external_id'} to get a data row with external_id = 'my_external_id'
 
 
         NOTE: 
@@ -567,7 +561,7 @@ class Dataset(DbObject, Updateable, Deletable):
             LabelboxError: if the export fails or is unable to download within the specified time.
         """
         warnings.warn(
-            "You are currently utilizing exports v1 for this action, which will be deprecated after December 31st, 2023. We recommend transitioning to exports v2. To view export v2 details, visit our docs: https://docs.labelbox.com/reference/label-export",
+            "You are currently utilizing exports v1 for this action, which will be deprecated after April 30th, 2024. We recommend transitioning to exports v2. To view export v2 details, visit our docs: https://docs.labelbox.com/reference/label-export",
             DeprecationWarning)
         id_param = "datasetId"
         metadata_param = "includeMetadataInput"
@@ -601,10 +595,39 @@ class Dataset(DbObject, Updateable, Deletable):
                          self.uid)
             time.sleep(sleep_time)
 
-    def export_v2(self,
-                  task_name: Optional[str] = None,
-                  filters: Optional[DatasetExportFilters] = None,
-                  params: Optional[CatalogExportParams] = None) -> Task:
+    @experimental
+    def export(
+        self,
+        task_name: Optional[str] = None,
+        filters: Optional[DatasetExportFilters] = None,
+        params: Optional[CatalogExportParams] = None,
+    ) -> ExportTask:
+        """
+        Creates a dataset export task with the given params and returns the task.
+
+        >>>     dataset = client.get_dataset(DATASET_ID)
+        >>>     task = dataset.export(
+        >>>         filters={
+        >>>             "last_activity_at": ["2000-01-01 00:00:00", "2050-01-01 00:00:00"],
+        >>>             "label_created_at": ["2000-01-01 00:00:00", "2050-01-01 00:00:00"],
+        >>>             "data_row_ids": [DATA_ROW_ID_1, DATA_ROW_ID_2, ...] # or global_keys: [DATA_ROW_GLOBAL_KEY_1, DATA_ROW_GLOBAL_KEY_2, ...]
+        >>>         },
+        >>>         params={
+        >>>             "performance_details": False,
+        >>>             "label_details": True
+        >>>         })
+        >>>     task.wait_till_done()
+        >>>     task.result
+        """
+        task = self._export(task_name, filters, params, streamable=True)
+        return ExportTask(task)
+
+    def export_v2(
+        self,
+        task_name: Optional[str] = None,
+        filters: Optional[DatasetExportFilters] = None,
+        params: Optional[CatalogExportParams] = None,
+    ) -> Task:
         """
         Creates a dataset export task with the given params and returns the task.
         
@@ -622,7 +645,15 @@ class Dataset(DbObject, Updateable, Deletable):
         >>>     task.wait_till_done()
         >>>     task.result
         """
+        return self._export(task_name, filters, params)
 
+    def _export(
+        self,
+        task_name: Optional[str] = None,
+        filters: Optional[DatasetExportFilters] = None,
+        params: Optional[CatalogExportParams] = None,
+        streamable: bool = False,
+    ) -> Task:
         _params = params or CatalogExportParams({
             "attachments": False,
             "metadata_fields": False,
@@ -634,6 +665,8 @@ class Dataset(DbObject, Updateable, Deletable):
             "model_run_ids": None,
             "project_ids": None,
             "interpolated_frames": False,
+            "all_projects": False,
+            "all_model_runs": False,
         })
         validate_catalog_export_params(_params)
 
@@ -645,10 +678,10 @@ class Dataset(DbObject, Updateable, Deletable):
         })
 
         mutation_name = "exportDataRowsInCatalog"
-        create_task_query_str = """mutation exportDataRowsInCatalogPyApi($input: ExportDataRowsInCatalogInput!){
-            %s(input: $input) {taskId} }
-            """ % (mutation_name)
-
+        create_task_query_str = (
+            f"mutation {mutation_name}PyApi"
+            f"($input: ExportDataRowsInCatalogInput!)"
+            f"{{{mutation_name}(input: $input){{taskId}}}}")
         media_type_override = _params.get('media_type_override', None)
 
         if task_name is None:
@@ -684,7 +717,12 @@ class Dataset(DbObject, Updateable, Deletable):
                         _params.get('project_ids', None),
                     "modelRunIds":
                         _params.get('model_run_ids', None),
+                    "allProjects":
+                        _params.get('all_projects', False),
+                    "allModelRuns":
+                        _params.get('all_model_runs', False),
                 },
+                "streamable": streamable,
             }
         }
 
@@ -702,14 +740,4 @@ class Dataset(DbObject, Updateable, Deletable):
                                   error_log_key="errors")
         res = res[mutation_name]
         task_id = res["taskId"]
-        user: User = self.client.get_user()
-        tasks: List[Task] = list(
-            user.created_tasks(where=Entity.Task.uid == task_id))
-        # Cache user in a private variable as the relationship can't be
-        # resolved due to server-side limitations (see Task.created_by)
-        # for more info.
-        if len(tasks) != 1:
-            raise ResourceNotFoundError(Entity.Task, task_id)
-        task: Task = tasks[0]
-        task._user = user
-        return task
+        return Task.get_task(self.client, task_id)
